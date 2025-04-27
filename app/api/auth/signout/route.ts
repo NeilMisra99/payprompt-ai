@@ -1,20 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
 export const runtime = "edge";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
   await supabase.auth.signOut();
 
-  return NextResponse.redirect(
-    new URL(
-      "/login",
-      process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-    ),
-    {
-      status: 302,
-    }
-  );
+  const requestUrl = new URL(request.url);
+  // Redirect to the login page on the same origin
+  const redirectUrl = new URL("/login", requestUrl.origin);
+
+  return NextResponse.redirect(redirectUrl, {
+    status: 302,
+  });
 }
