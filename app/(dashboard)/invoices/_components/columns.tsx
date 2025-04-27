@@ -103,7 +103,7 @@ function ActionsCell({ row }: { row: Row<Invoice> }) {
           {/* Conditionally render Edit only for drafts */}
           {invoice.status === "draft" && (
             <DropdownMenuItem asChild>
-              <Link href={editPath} className="cursor-pointer">
+              <Link href={editPath} className="cursor-pointer" prefetch={true}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </Link>
@@ -113,6 +113,7 @@ function ActionsCell({ row }: { row: Row<Invoice> }) {
             <Link
               href={`/invoices/${invoice.id}/duplicate`}
               className="cursor-pointer"
+              prefetch={true}
             >
               <Copy className="mr-2 h-4 w-4" />
               Duplicate

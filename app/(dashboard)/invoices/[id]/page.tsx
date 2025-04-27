@@ -151,7 +151,7 @@ export default async function InvoiceDetailPage(props: {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="icon" asChild>
-            <Link href="/invoices">
+            <Link href="/invoices" prefetch={true}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>

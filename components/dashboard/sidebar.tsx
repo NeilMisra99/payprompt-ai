@@ -114,6 +114,7 @@ export default function Sidebar({ user }: SidebarProps) {
                   ? "bg-sidebar-accent text-sidebar-primary"
                   : "text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-primary"
               )}
+              prefetch={true}
             >
               <Icon
                 className={cn(
@@ -151,6 +152,7 @@ export default function Sidebar({ user }: SidebarProps) {
               <Link
                 href="/settings"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary transition-colors"
+                prefetch={true}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings

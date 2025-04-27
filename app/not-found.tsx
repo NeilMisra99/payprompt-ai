@@ -28,7 +28,9 @@ export default function NotFound() {
         </CardContent>
         <CardFooter className="flex justify-center">
           <Button asChild>
-            <Link href="/dashboard">Beam Me Back Home</Link>
+            <Link href="/dashboard" prefetch={true}>
+              Beam Me Back Home
+            </Link>
           </Button>
         </CardFooter>
       </Card>

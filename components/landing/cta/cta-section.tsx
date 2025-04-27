@@ -43,7 +43,7 @@ export function CtaSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <Link href="/register">
+          <Link href="/register" prefetch={true}>
             <Button size="lg" className="w-full sm:w-auto">
               Get Started
             </Button>

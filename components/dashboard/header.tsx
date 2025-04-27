@@ -63,6 +63,7 @@ export default function Header() {
                 href="/dashboard"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary"
                 onClick={() => setIsOpen(false)}
+                prefetch={true}
               >
                 Dashboard
               </Link>
@@ -70,6 +71,7 @@ export default function Header() {
                 href="/invoices"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary"
                 onClick={() => setIsOpen(false)}
+                prefetch={true}
               >
                 Invoices
               </Link>
@@ -77,6 +79,7 @@ export default function Header() {
                 href="/clients"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary"
                 onClick={() => setIsOpen(false)}
+                prefetch={true}
               >
                 Clients
               </Link>
@@ -84,6 +87,7 @@ export default function Header() {
                 href="/settings"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary"
                 onClick={() => setIsOpen(false)}
+                prefetch={true}
               >
                 Settings
               </Link>

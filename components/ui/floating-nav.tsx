@@ -91,6 +91,7 @@ export const FloatingNav = ({
             className={cn(
               "relative dark:text-neutral-50 items-center flex space-x-1 text-neutral-600 dark:hover:text-neutral-300 hover:text-neutral-500 cursor-pointer"
             )}
+            prefetch={true}
           >
             {/* Optionally show icon on mobile if provided */}
             {navItem.icon && (
@@ -102,14 +103,14 @@ export const FloatingNav = ({
           </Link>
         ))}
         {/* Login Button */}
-        <Link href="/login">
+        <Link href="/login" prefetch={true}>
           <button className="border text-sm font-medium relative border-neutral-200 dark:border-white/[0.2] text-black dark:text-white px-4 py-2 rounded-full cursor-pointer">
             <span>Login</span>
             <span className="absolute inset-x-0 w-1/2 mx-auto -bottom-px bg-gradient-to-r from-transparent via-primary to-transparent h-px" />
           </button>
         </Link>
         {/* Sign Up Button */}
-        <Link href="/register">
+        <Link href="/register" prefetch={true}>
           <Button
             variant="default"
             size="sm"

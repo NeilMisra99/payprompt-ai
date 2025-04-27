@@ -66,7 +66,7 @@ export default async function NewClientPage() {
           <h1 className="text-3xl font-bold tracking-tight">New Client</h1>
           <p className="text-gray-500">Add a new client to your account</p>
         </div>
-        <Link href="/clients">
+        <Link href="/clients" prefetch={true}>
           <Button variant="outline">Cancel</Button>
         </Link>
       </div>

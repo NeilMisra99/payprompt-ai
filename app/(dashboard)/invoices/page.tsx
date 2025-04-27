@@ -86,7 +86,7 @@ export default async function InvoicesPage() {
             <p className="text-muted-foreground">Manage your invoices</p>{" "}
             {/* Use muted-foreground */}
           </div>
-          <Link href="/invoices/new">
+          <Link href="/invoices/new" prefetch={true}>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Create Invoice

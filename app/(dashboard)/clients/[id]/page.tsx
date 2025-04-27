@@ -90,7 +90,7 @@ export default async function EditClientPage(props: PageProps) {
           <h1 className="text-3xl font-bold tracking-tight">Edit Client</h1>
           <p className="text-gray-500">Update client information</p>
         </div>
-        <Link href="/clients">
+        <Link href="/clients" prefetch={true}>
           <Button variant="outline">Cancel</Button>
         </Link>
       </div>

@@ -65,7 +65,7 @@ export default async function SettingsPage() {
       {/* Animated Back Button */}
       <AnimatedContainer variant="fadeIn" delay={0.1}>
         <Button variant="outline" asChild className="w-fit mb-4">
-          <Link href="/dashboard">
+          <Link href="/dashboard" prefetch={true}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Link>

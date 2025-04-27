@@ -70,7 +70,7 @@ export default async function ClientsPage() {
           </div>
           <div className="flex items-center gap-2">
             <CsvWizard />
-            <Link href="/clients/new">
+            <Link href="/clients/new" prefetch={true}>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Client

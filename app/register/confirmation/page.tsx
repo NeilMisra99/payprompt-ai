@@ -22,7 +22,7 @@ export default function ConfirmationPage() {
             </p>
           </CardContent>
           <CardFooter className="flex justify-center">
-            <Link href="/login">
+            <Link href="/login" prefetch={true}>
               <Button variant="outline">Back to Login</Button>
             </Link>
           </CardFooter>

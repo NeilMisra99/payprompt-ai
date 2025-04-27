@@ -23,7 +23,11 @@ export function FooterSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <Link href="/" className="flex items-center mb-2 md:mb-0">
+            <Link
+              href="/"
+              className="flex items-center mb-2 md:mb-0"
+              prefetch={true}
+            >
               <span className="font-bold text-xl">PayPrompt AI</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs">

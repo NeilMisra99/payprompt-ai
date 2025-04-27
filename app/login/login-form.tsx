@@ -79,7 +79,11 @@ export function LoginForm() {
       <CardFooter className="flex flex-col space-y-2">
         <div className="text-sm text-center">
           <span>Don&apos;t have an account? </span>
-          <Link href="/register" className="text-primary hover:underline">
+          <Link
+            href="/register"
+            className="text-primary hover:underline"
+            prefetch={true}
+          >
             Register
           </Link>
         </div>

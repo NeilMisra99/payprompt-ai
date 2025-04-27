@@ -51,7 +51,11 @@ function ActionsCell({ row }: { row: Row<Client> }) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem asChild>
-            <Link href={`/clients/${client.id}`} className="cursor-pointer">
+            <Link
+              href={`/clients/${client.id}`}
+              className="cursor-pointer"
+              prefetch={true}
+            >
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Link>
