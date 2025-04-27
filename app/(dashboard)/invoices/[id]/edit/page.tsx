@@ -21,16 +21,16 @@ interface EditInvoiceData {
 
 // Function to fetch data for the edit invoice page
 async function fetchEditInvoiceData(
-  invoiceId: string
+  invoiceId: string,
+  token: string
 ): Promise<EditInvoiceData | null> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const url = `${baseUrl}/api/hono/invoices/${invoiceId}/edit-data`;
-  const token = await cookies();
   try {
     const response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
-        Cookie: token.toString(),
+        Cookie: token,
       },
       cache: "no-store", // Don't cache edit data heavily
     });
@@ -62,14 +62,17 @@ async function fetchEditInvoiceData(
 }
 
 interface EditInvoicePageProps {
-  params: { id: string };
+  params: Promise<{
+    id: string;
+  }>;
 }
 
-export default async function EditInvoicePage({
-  params,
-}: EditInvoicePageProps) {
-  const { id: invoiceId } = params;
-  const editData = await fetchEditInvoiceData(invoiceId);
+export default async function EditInvoicePage(props: EditInvoicePageProps) {
+  // const { id: invoiceId } = params;
+  const params = await props.params;
+  const invoiceId = params.id;
+  const token = await cookies();
+  const editData = await fetchEditInvoiceData(invoiceId, token.toString());
 
   // Handle unauthorized access
   if (editData === null) {
