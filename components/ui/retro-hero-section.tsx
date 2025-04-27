@@ -150,6 +150,7 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
                   alt="App preview light"
                   width={1000}
                   height={1000}
+                  priority={true}
                 />
                 <Image
                   src={bottomImage.dark}
@@ -157,6 +158,7 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
                   alt="App preview dark"
                   width={1000}
                   height={1000}
+                  priority={true}
                 />
               </div>
             )}
