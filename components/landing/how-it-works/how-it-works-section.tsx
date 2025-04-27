@@ -56,7 +56,7 @@ export function HowItWorksSection() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, amount: 0.1 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="relative w-full py-20 md:py-32 bg-muted/30 overflow-hidden"
+      className="relative w-full py-16 md:py-32 bg-muted/30 overflow-hidden"
       id="how-it-works"
     >
       <GridPattern
@@ -79,7 +79,7 @@ export function HowItWorksSection() {
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             How PayPrompt AI works
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
             Our AI-driven system helps you get paid faster with minimal effort,
             saving you time and improving your cash flow.
           </p>
@@ -91,7 +91,7 @@ export function HowItWorksSection() {
             <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/5 via-primary/30 to-primary/5 transform -translate-x-1/2 hidden md:block" />
 
             {/* Steps */}
-            <div className="space-y-24 relative">
+            <div className="space-y-16 md:space-y-24 relative">
               {steps.map((step, index) => (
                 <motion.div
                   key={index}

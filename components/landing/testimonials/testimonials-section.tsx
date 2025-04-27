@@ -49,7 +49,7 @@ export function TestimonialsSection() {
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6 }}
       id="testimonials"
-      className="relative w-full overflow-hidden py-20 md:py-32 antialiased bg-transparent"
+      className="relative w-full overflow-hidden py-16 md:py-32 antialiased bg-transparent"
     >
       <div className="container px-6 sm:px-8 md:px-10 lg:px-16 relative z-10">
         <motion.div
@@ -62,7 +62,7 @@ export function TestimonialsSection() {
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Trusted by businesses of all sizes
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
             See what our customers have to say about how PayPrompt AI has helped
             them improve their cash flow and reduce administrative work.
           </p>

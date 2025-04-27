@@ -12,10 +12,10 @@ export function CtaSection() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.5, delay: 0.1 }}
-      className="group relative w-full py-24 md:py-32 overflow-hidden bg-transparent"
+      className="group relative w-full py-20 md:py-32 overflow-hidden bg-transparent"
       id="cta"
     >
-      <div className="relative z-10 mx-auto flex max-w-container flex-col items-center gap-6 text-center sm:gap-8">
+      <div className="relative z-10 mx-auto flex max-w-container flex-col items-center gap-6 text-center sm:gap-8 px-6">
         <motion.h2
           className="text-3xl font-semibold sm:text-5xl"
           initial={{ opacity: 0, y: 20 }}
@@ -26,7 +26,7 @@ export function CtaSection() {
           Ready to get started?
         </motion.h2>
         <motion.p
-          className="text-lg text-muted-foreground max-w-xl"
+          className="text-base sm:text-lg text-muted-foreground max-w-xl"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}

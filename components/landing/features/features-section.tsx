@@ -114,7 +114,7 @@ export function FeaturesSection() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6 }}
-      className="relative w-full py-20 md:py-32 bg-background overflow-hidden"
+      className="relative w-full py-16 md:py-32 bg-background overflow-hidden"
       id="features"
     >
       <GridPattern
@@ -136,7 +136,7 @@ export function FeaturesSection() {
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             All the tools you need to get paid faster
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
             PayPrompt AI combines powerful invoicing features with intelligent
             reminders to help you maintain healthy cash flow.
           </p>

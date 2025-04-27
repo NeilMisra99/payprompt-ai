@@ -2,6 +2,7 @@ import Sidebar from "@/components/dashboard/sidebar";
 import { PageTransition } from "@/components/ui/page-transition";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { MobilePrompt } from "@/components/dashboard/mobile-prompt";
 
 export default async function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden py-4 bg-sidebar">
+      <MobilePrompt />
       <Sidebar user={user} />
       <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden px-4 md:px-6 rounded-l-xl bg-background shadow-lg shadow-black/20 border border-border">
         <main className="flex-1 min-h-0 overflow-y-auto">

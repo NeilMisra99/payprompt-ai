@@ -104,8 +104,8 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
 
         <section className="relative max-w-full mx-auto z-10">
           <RetroGrid {...gridOptions} />
-          <div className="max-w-screen-xl z-10 mx-auto px-4 py-28 pt-36 gap-12 md:px-8">
-            <div className="space-y-5 max-w-3xl leading-0 lg:leading-5 mx-auto text-center">
+          <div className="max-w-screen-xl z-10 mx-auto px-4 py-20 pt-24 md:px-8 md:py-28 md:pt-36 gap-12">
+            <div className="space-y-5 max-w-3xl mx-auto text-center">
               {title && (
                 <h1 className="cursor-default text-sm text-muted-foreground group font-sans mx-auto px-5 py-2 bg-gradient-to-tr from-muted/50 via-muted/50 to-transparent border border-black dark:border-white rounded-full w-fit">
                   {title}
@@ -133,8 +133,8 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
                   <div className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-background text-xs font-medium backdrop-blur-3xl">
                     <a
                       href={ctaHref}
-                      // Keep button background subtle
-                      className="inline-flex rounded-full text-center group items-center w-full justify-center bg-background/80 hover:bg-background/90 text-foreground border border-transparent transition-all sm:w-auto py-4 px-10"
+                      // Keep button background subtle, adjust px for mobile
+                      className="inline-flex rounded-full text-center group items-center w-full justify-center bg-background/80 hover:bg-background/90 text-foreground border border-transparent transition-all sm:w-auto py-4 px-6 sm:px-10"
                     >
                       {ctaText}
                     </a>
@@ -143,7 +143,7 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
               </div>
             </div>
             {bottomImage && (
-              <div className="mt-12 mx-10 relative z-10">
+              <div className="mt-12 mx-4 sm:mx-10 relative z-10">
                 <Image
                   src={bottomImage.light}
                   className="w-full shadow-lg rounded-lg border border-border dark:hidden"
