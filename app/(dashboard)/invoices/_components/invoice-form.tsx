@@ -448,7 +448,6 @@ export function InvoiceForm({
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={isPending}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
@@ -489,7 +488,6 @@ export function InvoiceForm({
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={isPending}
-                            initialFocus
                           />
                         </PopoverContent>
                       </Popover>
