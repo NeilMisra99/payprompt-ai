@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight } from "lucide-react";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import Image from "next/image";
 
@@ -109,7 +108,6 @@ const RetroHeroSection = React.forwardRef<HTMLDivElement, HeroSectionProps>(
               {title && (
                 <h1 className="cursor-default text-sm text-muted-foreground group font-sans mx-auto px-5 py-2 bg-gradient-to-tr from-muted/50 via-muted/50 to-transparent border border-black dark:border-white rounded-full w-fit">
                   {title}
-                  <ChevronRight className="inline w-4 h-4 ml-2 group-hover:translate-x-1 duration-300" />
                 </h1>
               )}
               <h2 className="text-4xl tracking-tight font-semibold font-sans text-foreground mx-auto md:text-6xl">
