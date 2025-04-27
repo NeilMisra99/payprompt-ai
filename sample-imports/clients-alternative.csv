@@ -1,0 +1,6 @@
+"Customer Full Name","Primary Email Address","Contact No.","Billing Address","Attention To","Notes"
+"Acme Corporation","info@acme.com","555-1234","123 Main St, Anytown","John Doe","Long-term client"
+"Beta Widgets Inc.","sales@beta.inc","(555)555-9876","PO Box 456, Elsewhere","Ms. Jane Smith","New lead"
+"Gamma Solutions","gamma@example.net","555 888 7777","789 Oak Ave\nSuite 100","Contact Provided",""
+"Invalid Email","invalid-email","555-1111","N/A","","Test bad email"
+"","test@test.com","555-2222","1 Test St","","Test missing req"

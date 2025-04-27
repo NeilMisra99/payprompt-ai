@@ -1,103 +1,96 @@
-import Image from "next/image";
+// import Link from "next/link"; // Removed unused import
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import { Metadata } from "next";
+import { GeistSans } from "geist/font/sans"; // Import GeistSans
 
-export default function Home() {
+// Import individual components
+import { HeroSection } from "@/components/landing/hero/hero-section";
+import { FeaturesSection } from "@/components/landing/features/features-section";
+import { HowItWorksSection } from "@/components/landing/how-it-works/how-it-works-section";
+import { TestimonialsSection } from "@/components/landing/testimonials/testimonials-section";
+import { CtaSection } from "@/components/landing/cta/cta-section";
+import { FooterSection } from "@/components/landing/footer/footer-section";
+import { FloatingNav } from "@/components/ui/floating-nav"; // Import FloatingNav
+
+// Define metadata for SEO
+export const metadata: Metadata = {
+  title: "PayPrompt AI — Get Paid Faster with AI-Powered Payment Reminders",
+  description:
+    "Streamline your invoicing workflow and improve cash flow with intelligent, AI-powered payment reminders that get results. Create professional invoices, send automated reminders, and track payments effortlessly.",
+  keywords: [
+    "invoice software",
+    "payment reminders",
+    "AI invoicing",
+    "get paid faster",
+    "cash flow management",
+  ],
+  openGraph: {
+    title: "PayPrompt AI — Get Paid Faster with AI-Powered Payment Reminders",
+    description:
+      "Streamline your invoicing workflow and improve cash flow with intelligent, AI-powered payment reminders that get results.",
+    url: "https://payprompt.ai",
+    siteName: "PayPrompt AI",
+    images: [
+      {
+        url: "https://payprompt.ai/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "PayPrompt AI Homepage",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+};
+
+export default async function Home() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // If the user is logged in, redirect them to the dashboard
+  if (user) {
+    redirect("/dashboard");
+  }
+
+  // Define Nav Items for FloatingNav
+  const navItems = [
+    { name: "Features", link: "#features" },
+    { name: "How it Works", link: "#how-it-works" },
+    // Add Pricing link if section exists
+    // { name: "Pricing", link: "#pricing" },
+    { name: "Testimonials", link: "#testimonials" },
+  ];
+
+  // Otherwise, render the landing page with all sections
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className={`relative ${GeistSans.className}`}>
+      <FloatingNav navItems={navItems} />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <HowItWorksSection />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        {/* Create a wrapper for Testimonials and CTA with shared background */}
+        <div className="relative overflow-hidden dark:bg-grid-white/[0.05]">
+          {/* Background decorative elements moved from TestimonialsSection */}
+          <div
+            className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-primary/5 blur-[80px]"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-primary/5 blur-3xl"
+            aria-hidden="true"
+          />
+          {/* Sections inside the wrapper */}
+          <TestimonialsSection />
+          <CtaSection />
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <FooterSection />
     </div>
   );
 }

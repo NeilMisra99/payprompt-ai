@@ -1,0 +1,33 @@
+
+[functions.send-scheduled-reminders]
+enabled = true
+verify_jwt = true
+import_map = "./functions/send-scheduled-reminders/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/send-scheduled-reminders/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/send-scheduled-reminders/*.html" ]
+
+[functions.hello-world]
+enabled = true
+verify_jwt = true
+import_map = "./functions/hello-world/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/hello-world/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/hello-world/*.html" ]
+
+[functions.send-invoice-email]
+enabled = true
+verify_jwt = true
+import_map = "./functions/send-invoice-email/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/send-invoice-email/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/send-invoice-email/*.html" ]
