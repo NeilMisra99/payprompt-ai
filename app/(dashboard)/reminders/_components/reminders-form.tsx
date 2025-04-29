@@ -461,7 +461,7 @@ Provide the reminder message first, followed by '--- SUGGESTION ---', then the s
                   value={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select an invoice" />
                     </SelectTrigger>
                   </FormControl>
@@ -542,7 +542,7 @@ Provide the reminder message first, followed by '--- SUGGESTION ---', then the s
                     value={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Type" />
                       </SelectTrigger>
                     </FormControl>
@@ -569,7 +569,7 @@ Provide the reminder message first, followed by '--- SUGGESTION ---', then the s
                     value={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Tone" />
                       </SelectTrigger>
                     </FormControl>

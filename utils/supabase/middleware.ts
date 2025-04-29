@@ -10,16 +10,6 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // cookieOptions: {
-      //   domain:
-      //     process.env.NODE_ENV === "development"
-      //       ? "localhost"
-      //       : ".summations.com", // Allow summations.com and all subdomains
-      //   secure: process.env.NODE_ENV === "development" ? false : true,
-      //   sameSite: "lax",
-      //   path: "/",
-      //   maxAge: 60 * 60 * 24 * 30,
-      // },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -50,14 +40,12 @@ export async function updateSession(request: NextRequest) {
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
+    !request.nextUrl.pathname.startsWith("/api/auth") &&
     !request.nextUrl.pathname.startsWith("/register") &&
-    request.nextUrl.pathname !== "/" &&
-    !request.nextUrl.pathname.startsWith("/auth/") &&
-    !request.nextUrl.pathname.startsWith("/api/auth/") &&
-    !request.nextUrl.pathname.startsWith("/redirect/") &&
-    !request.nextUrl.pathname.startsWith("/api/hono/")
+    !request.nextUrl.pathname.startsWith("/") &&
+    !request.nextUrl.pathname.startsWith("/verify-otp")
   ) {
-    // Redirect to login page for protected routes
+    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

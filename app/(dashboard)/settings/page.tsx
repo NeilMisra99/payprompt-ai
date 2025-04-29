@@ -1,18 +1,30 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowLeft, Info } from "lucide-react";
+// Removed Avatar imports, now handled in AvatarUploadForm
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tab";
 import { ProfileForm, type Profile } from "./_components/profile-form";
 import { InvoiceSettingsForm } from "./_components/invoice-settings-form";
+// import { AvatarUploadForm } from "./_components/avatar-upload-form"; // Old form - Remove
+import { AnimatedUploadSwitcher } from "../../../components/ui/animated-upload-switcher"; // New import
+// import { CompanyLogoUploadForm } from "./_components/company-logo-upload-form"; // Old form - Remove
+// import { CompanyLogoUploadTrigger } from "./_components/company-logo-upload-trigger"; // New trigger
 import { Button } from "@/components/ui/button";
 import { AnimatedContainer } from "@/components/ui/animated-container";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server"; // Use server client for user ID
 
-// Define the profile type based on your API response or database schema
+// Update Profile type to include id (assuming fetchProfile returns it)
+// interface Profile {
+//   id: string;
+//   // ... other fields
+// }
 
-// Function to fetch profile from the API endpoint
-async function fetchProfile(token: string): Promise<Profile | null> {
+// Assuming fetchProfile returns at least id, avatar_url, full_name
+// And we fetch the full User object separately for the AvatarUploadForm
+async function fetchProfileData(token: string): Promise<Profile | null> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const url = `${baseUrl}/api/hono/profile`;
 
@@ -22,47 +34,49 @@ async function fetchProfile(token: string): Promise<Profile | null> {
         "Content-Type": "application/json",
         Cookie: token, // Pass cookies for authentication
       },
-      cache: "force-cache", // Cache the data
-      next: { tags: ["profile"] }, // Tag for revalidation
+      cache: "force-cache", // Remove this - rely on revalidatePath
+      next: { tags: ["profile"] }, // Revalidation might be better handled by router cache invalidation after update
     });
 
-    if (response.status === 401) {
-      // User is likely not logged in, redirect handled below
-      return null;
-    }
-
+    if (response.status === 401) return null;
     if (!response.ok) {
       console.error(`HTTP error! status: ${response.status}`);
       throw new Error(`Failed to fetch profile: ${response.statusText}`);
     }
-
-    const data: Profile = await response.json();
-    return data;
+    const data = await response.json();
+    // Ensure ID is present - adjust based on actual API response structure
+    if (!data?.id) {
+      console.error("Profile data fetched successfully but missing user ID.");
+      return null;
+    }
+    return data as Profile;
   } catch (error) {
     console.error("Error fetching profile:", error);
-    // Decide how to handle errors, maybe return null or throw
-    return null; // Returning null to allow redirect below
+    return null;
   }
 }
 
 export default async function SettingsPage() {
-  const token = await cookies(); // Get cookies string
-  const userProfile = await fetchProfile(token.toString());
+  const token = await cookies();
+  const supabase = await createClient(); // Use server client
 
-  // Redirect if profile fetch fails or user is unauthorized
-  if (!userProfile) {
+  // Fetch user session AND profile data
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userProfile = user ? await fetchProfileData(token.toString()) : null;
+
+  // Redirect if no user session or profile fetch fails
+  if (!user || !userProfile) {
     redirect("/login");
   }
 
-  // Use email from cookies/session if needed and profile has no name/avatar?
-  // This depends on whether the Hono endpoint reliably returns fallbacks.
-  // Assuming the Hono endpoint handles fallbacks correctly based on user data.
-  const displayName = userProfile.full_name ?? "User"; // Use a default if needed
-  const displayAvatar = userProfile.avatar_url ?? undefined;
+  // Now we have both user object (for ID in AvatarUploadForm) and profile details
+  const userNameForFallback = userProfile.full_name ?? user.email; // Use email as secondary fallback
 
   return (
     <div className="flex flex-col space-y-6 p-4 md:p-8">
-      {/* Animated Back Button */}
+      {/* Back Button */}
       <AnimatedContainer variant="fadeIn" delay={0.1}>
         <Button variant="outline" asChild className="w-fit mb-4">
           <Link href="/dashboard" prefetch={true}>
@@ -72,54 +86,60 @@ export default async function SettingsPage() {
         </Button>
       </AnimatedContainer>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {/* Animated Left Column: Profile Info */}
-        <AnimatedContainer variant="slideIn" delay={0.2}>
-          <div className="flex flex-col items-center space-y-4">
-            <Avatar className="h-64 w-64">
-              <AvatarImage src={displayAvatar} alt={displayName} />
-              <AvatarFallback>
-                {displayName?.charAt(0).toUpperCase() ?? "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-center">
-              <h2 className="text-xl font-semibold">{displayName}</h2>
-              {/* If email is needed and not in profile, might need to fetch user separately or pass via props */}
-              {/* <p className="text-sm text-muted-foreground">{user.email}</p> */}
-            </div>
-            {/* Add other left-side elements like Message Usage, Keyboard Shortcuts if needed */}
-          </div>
-        </AnimatedContainer>
+      {/* Main Content Area: Flex row on medium+ screens */}
+      <div className="flex flex-col md:flex-row md:space-x-8 lg:space-x-12 space-y-8 md:space-y-0">
+        {/* Left Column: Animated Image Upload Switcher */}
+        <div className="flex flex-col items-center md:w-auto md:pt-4 mt-4">
+          {/* Removed individual triggers and replaced with the switcher */}
+          <AnimatedUploadSwitcher
+            userId={user.id}
+            currentAvatarUrl={userProfile.avatar_url ?? null}
+            currentLogoUrl={userProfile.company_logo_url ?? null}
+            userName={userNameForFallback || "User"}
+          />
+          {/* Conditionally render Alert outside the switcher */}
+          {!userProfile.company_logo_url && (
+            <Alert
+              variant="destructive"
+              className="w-full max-w-xs text-center mt-4"
+            >
+              <Info className="h-4 w-4" />
+              <AlertTitle className="text-sm">
+                Company Logo Recommended
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                Upload logo for more professional invoices.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
 
-        {/* Animated Right Column: Settings Tabs */}
-        <AnimatedContainer
-          variant="slideUp"
-          delay={0.3}
-          className="md:col-span-2"
-        >
-          <Tabs defaultValue="profile">
-            <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="invoice">Invoice Settings</TabsTrigger>
-              {/* Add more tabs as needed, e.g., Subscription, Danger Zone */}
-            </TabsList>
-            <TabsContent value="profile" className="mt-6">
-              {/* Pass the fetched profile data */}
-              <ProfileForm profile={userProfile} />
-            </TabsContent>
-            <TabsContent value="invoice" className="mt-6">
-              {/* Pass the fetched profile data */}
-              <InvoiceSettingsForm profile={userProfile} />
-            </TabsContent>
-            {/* Add more TabsContent for other settings sections */}
-          </Tabs>
-          {/* Danger Zone Section - Can be placed outside or inside tabs depending on design */}
-          {/* <div className="mt-8 rounded-lg border border-destructive p-4">
-             <h3 className="text-lg font-semibold text-destructive">Danger Zone</h3>
-             <p className="text-sm text-muted-foreground">Permanently delete your account and all associated data.</p>
-             <Button variant="destructive" className="mt-4">Delete Account</Button>
-           </div> */}
-        </AnimatedContainer>
+        {/* Right Column: Settings Tabs */}
+        <div className="flex-1">
+          <AnimatedContainer variant="slideUp" delay={0.2}>
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="invoice">Invoice Settings</TabsTrigger>
+              </TabsList>
+
+              {/* Profile Tab Content */}
+              <TabsContent value="profile" className="mt-6 space-y-6">
+                {/* Remove the h3 and Separator from here, they are part of the form now conceptually */}
+                {/* <h3 className="text-lg font-medium">Profile Settings</h3> */}
+                {/* The image upload triggers are now in the left column */}
+                {/* <Separator /> */}
+                <ProfileForm profile={userProfile} />
+              </TabsContent>
+
+              {/* Invoice Tab Content */}
+              <TabsContent value="invoice" className="mt-6 space-y-6">
+                {/* <h3 className="text-lg font-medium">Invoice Settings</h3> */}
+                <InvoiceSettingsForm profile={userProfile} />
+              </TabsContent>
+            </Tabs>
+          </AnimatedContainer>
+        </div>
       </div>
     </div>
   );

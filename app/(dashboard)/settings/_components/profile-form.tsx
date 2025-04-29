@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -26,6 +24,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { updateProfile } from "@/app/actions/profileActions";
 
 // Define InvoiceSettings structure
 export interface InvoiceSettings {
@@ -41,27 +41,41 @@ export interface Profile {
   full_name?: string | null; // Make optional to match potential DB state
   username?: string | null;
   company_name?: string | null;
-  company_address?: string | null;
+  company_email?: string | null; // Added company email
+  company_address_street?: string | null;
+  company_address_line2?: string | null;
+  company_address_city?: string | null;
+  company_address_state?: string | null;
+  company_address_postal_code?: string | null;
+  company_address_country?: string | null;
   avatar_url?: string | null;
-  company_logo?: string | null;
+  company_logo_url?: string | null;
   invoice_settings?: InvoiceSettings; // Add optional invoice_settings
 }
 
+// Updated schema slightly: explicitly allow null for optional fields
+// Ensure this matches the database schema and updateProfile action expectations
 const profileFormSchema = z.object({
-  full_name: z.string().min(1, "Full name is required"),
-  username: z.string().nullish(), // Allow optional/null
+  full_name: z
+    .string()
+    .min(1, "Full name is required")
+    .or(z.literal(null))
+    .or(z.literal("")),
+  username: z.string().nullish(),
   company_name: z.string().nullish(),
-  company_address: z.string().nullish(),
-  avatar_url: z
+  // Include company_email if it's meant to be editable here
+  company_email: z
     .string()
-    .url("Please enter a valid URL")
+    .email("Invalid email format")
     .nullish()
     .or(z.literal("")),
-  company_logo: z
-    .string()
-    .url("Please enter a valid URL")
-    .nullish()
-    .or(z.literal("")),
+  company_address_street: z.string().nullish(),
+  company_address_line2: z.string().nullish(),
+  company_address_city: z.string().nullish(),
+  company_address_state: z.string().nullish(),
+  company_address_postal_code: z.string().nullish(),
+  company_address_country: z.string().nullish(),
+  // company_logo_url removed - handled by dedicated component
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -73,40 +87,55 @@ interface ProfileFormProps {
 export function ProfileForm({ profile }: ProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
-  // Default form values from existing profile
   const defaultValues: Partial<ProfileFormValues> = {
-    full_name: profile?.full_name || "",
-    username: profile?.username || "",
-    company_name: profile?.company_name || "",
-    company_address: profile?.company_address || "",
-    avatar_url: profile?.avatar_url || "",
-    company_logo: profile?.company_logo || "",
+    full_name: profile?.full_name,
+    username: profile?.username,
+    company_name: profile?.company_name,
+    company_email: profile?.company_email,
+    company_address_street: profile?.company_address_street,
+    company_address_line2: profile?.company_address_line2,
+    company_address_city: profile?.company_address_city,
+    company_address_state: profile?.company_address_state,
+    company_address_postal_code: profile?.company_address_postal_code,
+    company_address_country: profile?.company_address_country,
   };
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues,
+    mode: "onChange", // Validate on change for better UX
   });
 
   async function onSubmit(data: ProfileFormValues) {
+    setIsLoading(true);
+    toast.info("Updating profile...");
+
     try {
-      setIsLoading(true);
+      // Create FormData from the validated form data
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, String(value)); // Send null/undefined as empty string or omit?
+        } else {
+          formData.append(key, ""); // Send empty string for null/undefined? Adjust as needed by action
+        }
+      });
 
-      // Update profile in the database
-      const { error } = await supabase
-        .from("profiles")
-        .update(data)
-        .eq("id", profile.id);
+      // Call the server action
+      const result = await updateProfile(formData);
 
-      if (error) throw error;
-
-      toast.success("Profile updated successfully");
-      router.refresh();
+      if (result.success) {
+        toast.success("Profile updated successfully!");
+        router.refresh(); // Re-fetch server data
+      } else {
+        throw new Error(result.error || "Failed to update profile.");
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -115,78 +144,138 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Personal Information</CardTitle>
+        <CardTitle>Personal & Company Information</CardTitle>
         <CardDescription>
-          Update your personal and company details
+          Update your personal and company details.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your full name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Your username"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="avatar_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profile Picture URL</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com/avatar.jpg"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <CardContent className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Personal Information</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Your full name"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Your username"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            <div className="border-t pt-6">
+            <div className="border-t pt-6 space-y-6">
               <h3 className="text-lg font-medium">Company Information</h3>
-              <div className="grid grid-cols-1 gap-6 mt-6">
+              <FormField
+                control={form.control}
+                name="company_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Your company name"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="company_email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Contact Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="contact@yourcompany.com"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-2">
+                <Label>Company Address</Label>
+              </div>
+              <FormField
+                control={form.control}
+                name="company_address_street"
+                render={({ field }) => (
+                  <FormItem className="mt-0">
+                    <FormLabel className="sr-only">Street Address</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Street Address"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="company_address_line2"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="sr-only">Address Line 2</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Address Line 2 (Optional)"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="company_name"
+                  name="company_address_city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Name</FormLabel>
+                      <FormLabel className="sr-only">City</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Your company name"
+                          placeholder="City"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -195,17 +284,17 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
-                  name="company_address"
+                  name="company_address_state"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Address</FormLabel>
+                      <FormLabel className="sr-only">
+                        State / Province
+                      </FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Your company address"
-                          rows={3}
+                        <Input
+                          placeholder="State / Province"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -214,16 +303,34 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                     </FormItem>
                   )}
                 />
-
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="company_logo"
+                  name="company_address_postal_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Logo URL</FormLabel>
+                      <FormLabel className="sr-only">Postal Code</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="https://example.com/logo.png"
+                          placeholder="Postal Code"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="company_address_country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">Country</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Country"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -235,7 +342,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end pt-6">
+          <CardFooter className="flex justify-end border-t pt-6">
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>

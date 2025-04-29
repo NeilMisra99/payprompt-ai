@@ -16,7 +16,6 @@ export interface InvoiceEmailTemplateProps {
   formattedSubtotal: string;
   formattedTax?: string; // Optional, only show if tax > 0
   formattedDiscount?: string; // Optional, only show if discount > 0
-  invoiceUrl?: string;
 }
 
 // Helper to format currency (can be moved to a shared util if needed)
@@ -37,7 +36,7 @@ const htmlTemplate = `
     {{PREVIEW_TEXT}}
     <div>
       <!-- Hidden spacer characters -->
-       ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿
+       ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿
     </div>
   </div>
   <body style='background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif'>
@@ -55,7 +54,6 @@ const htmlTemplate = `
                 Thank you for your business! Please find your invoice attached{{ATTACHMENT_NOTE}}.
                 The details are summarized below.
             </p>
-            {{INVOICE_LINK_SECTION}}
             <hr style="width:100%;border:none;border-top:1px solid #eaeaea;border-color:#e5e7eb;margin:26px 0" />
 
             <!-- Invoice Items Table -->
@@ -151,7 +149,6 @@ function InvoiceEmailTemplate({
   formattedSubtotal,
   formattedTax,
   formattedDiscount,
-  invoiceUrl,
 }: InvoiceEmailTemplateProps): string {
   const previewText = `Your invoice #${invoiceNumber} from ${companyName} is ready. Amount due: ${formattedTotal}`;
 
@@ -176,25 +173,6 @@ function InvoiceEmailTemplate({
     `
     )
     .join("");
-
-  // Generate Invoice Link Section (conditionally)
-  let invoiceLinkSection = "";
-  if (invoiceUrl) {
-    invoiceLinkSection = `
-      <p style="font-size:16px;line-height:1.6;color:#374151;margin-bottom:16px;margin-top:16px">
-        You can view your invoice online here:
-      </p>
-      <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:16px;margin-top:16px">
-        <tbody>
-          <tr>
-            <td align="center">
-              <a href="${invoiceUrl}" target="_blank" style="background-color:#2563eb;border-radius:3px;color:#ffffff;font-size:16px;text-decoration:none;text-align:center;display:inline-block;p-x:12px;p-y:12px;line-height:100%;max-width:100%;padding:12px 12px"><span><!--[if mso]><i style="letter-spacing: 12px;mso-font-width:-100%;mso-text-raise:18" hidden>&nbsp;</i><![endif]--></span><span style="background-color:#2563eb;border-radius:3px;color:#ffffff;font-size:16px;text-decoration:none;text-align:center;display:inline-block;p-x:12px;p-y:12px;max-width:100%;line-height:120%;text-transform:none;mso-padding-alt:0px;mso-text-raise:9px">View Invoice Online</span><span><!--[if mso]><i style="letter-spacing: 12px;mso-font-width:-100%" hidden>&nbsp;</i><![endif]--></span></a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    `;
-  }
 
   // Generate conditional tax row
   const taxRowHtml = formattedTax
@@ -222,10 +200,6 @@ function InvoiceEmailTemplate({
   htmlContent = htmlContent.replace(/{{INVOICE_NUMBER}}/g, invoiceNumber);
   htmlContent = htmlContent.replace(/{{CLIENT_NAME}}/g, clientName);
   htmlContent = htmlContent.replace(/{{ATTACHMENT_NOTE}}/g, attachmentNote);
-  htmlContent = htmlContent.replace(
-    /{{INVOICE_LINK_SECTION}}/g,
-    invoiceLinkSection
-  );
   htmlContent = htmlContent.replace(
     /{{INVOICE_ITEMS_ROWS}}/g,
     invoiceItemsRowsHtml

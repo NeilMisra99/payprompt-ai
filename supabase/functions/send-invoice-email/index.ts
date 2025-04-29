@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@4.0.0"; // Import Resend SDK
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 // Import the UPDATED email template function
 import InvoiceEmailTemplate, {
@@ -21,6 +22,7 @@ interface Invoice {
   subtotal: number;
   tax: number;
   discount: number;
+  pdf_path?: string | null; // Add pdf_path field
   // ... other invoice fields potentially needed ...
 }
 
@@ -58,12 +60,10 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 
 serve(async (req) => {
   // 1. Initialize clients
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false }, // Important for server-side/edge functions
-  });
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const resend = new Resend(RESEND_API_KEY);
 
-  // 2. Handle request (assuming POST from webhook)
+  // 2. Handle request (assuming POST from webhook or server action)
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
       status: 405,
@@ -73,9 +73,8 @@ serve(async (req) => {
 
   try {
     // 3. Parse webhook payload
-    // Supabase webhooks send the record in the `record` or `old_record` field
     const payload = await req.json();
-    const invoice: Invoice = payload.record; // Adjust if webhook structure differs
+    const invoice: Invoice = payload.record; // Get the invoice record
 
     console.log(
       `Processing invoice: ${invoice.id} (Number: ${invoice.invoice_number})`
@@ -90,8 +89,7 @@ serve(async (req) => {
       });
     }
 
-    // 4. Fetch required data using Admin client (bypasses RLS)
-
+    // 4. Fetch required related data using Admin client (bypasses RLS)
     // Fetch Client
     const { data: clientData, error: clientError } = await supabaseAdmin
       .from("clients")
@@ -110,8 +108,7 @@ serve(async (req) => {
     const { data: itemsData, error: itemsError } = await supabaseAdmin
       .from("invoice_items")
       .select("description, quantity, price, amount") // Select necessary fields
-      .eq("invoice_id", invoice.id)
-      .returns<InvoiceItemData[]>(); // Specify return type array
+      .eq("invoice_id", invoice.id);
 
     // --- Error Handling for Fetched Data ---
     if (clientError || !clientData || !clientData.email) {
@@ -138,22 +135,21 @@ serve(async (req) => {
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
+    // Ensure itemsData is treated as InvoiceItemData[] or empty array
+    const invoiceItems: InvoiceItemData[] = itemsData || [];
     if (!itemsData || itemsData.length === 0) {
-      // Should an invoice exist without items? Decide how to handle.
       console.warn(`No items found for invoice ${invoice.id}`);
-      // For now, proceed with empty items, but could also error out.
     }
 
     // --- Prepare Data ---
     const companyName = profileData?.company_name || "Your Company";
     const clientEmail = clientData.email;
     const clientName = clientData.name || "Valued Client";
-    const invoiceItems = itemsData || [];
+    const pdfPath = invoice.pdf_path; // Get PDF path from the invoice record
 
-    // *** Add Logging Here ***
     console.log("Fetched profile data:", profileData);
     console.log(`Resolved companyName: '${companyName}'`);
-    // ***********************
+    console.log(`PDF path from record: ${pdfPath}`);
 
     // Format currency and date
     const formattedSubtotal = formatCurrency(invoice.subtotal);
@@ -170,13 +166,10 @@ serve(async (req) => {
         day: "numeric",
       }
     );
+    // const appBaseUrl = Deno.env.get("APP_BASE_URL") || "http://localhost:3000"; // Removed
+    // const invoiceUrl = `${appBaseUrl}/invoices/${invoice.id}`; // Removed
 
-    // Optional: Construct the invoice URL
-    // Replace with your actual app URL structure
-    const appBaseUrl = Deno.env.get("APP_BASE_URL") || "http://localhost:3000"; // Add APP_BASE_URL to env
-    const invoiceUrl = `${appBaseUrl}/invoices/${invoice.id}`;
-
-    // Prepare props for the template, including items
+    // Prepare props for the template
     const templateProps: InvoiceEmailTemplateProps = {
       clientName: clientName,
       invoiceNumber: invoice.invoice_number,
@@ -186,52 +179,114 @@ serve(async (req) => {
       formattedTax: formattedTax,
       formattedDiscount: formattedDiscount,
       companyName: companyName,
-      items: invoiceItems, // Pass the fetched items
-      invoiceUrl: invoiceUrl,
+      items: invoiceItems,
+      // invoiceUrl: invoiceUrl, // Removed
     };
-
-    // *** Log props being passed ***
     console.log("Props passed to template:", templateProps);
-    // *****************************
-
     const emailHtml = InvoiceEmailTemplate(templateProps);
+
+    // --- 5. Prepare Attachment (if path exists) --- //
+    const attachments = [];
+
+    if (pdfPath) {
+      console.log(`Attempting to download PDF from path: ${pdfPath}`);
+      try {
+        // Download the file content from storage
+        const { data: fileBlob, error: downloadError } =
+          await supabaseAdmin.storage.from("invoice-pdfs").download(pdfPath);
+
+        if (downloadError) {
+          throw new Error(`Storage download error: ${downloadError.message}`);
+        }
+        if (!fileBlob) {
+          throw new Error(`File blob is null for path: ${pdfPath}`);
+        }
+
+        // Convert Blob to Uint8Array
+        const fileArrayBuffer = await fileBlob.arrayBuffer();
+        const fileContent = new Uint8Array(fileArrayBuffer);
+
+        // --- START: BASE64 CONVERSION ---
+        // Use Deno std encoding/base64 for reliable conversion from Uint8Array
+        const base64Content = base64Encode(fileContent);
+        // --- END: BASE64 CONVERSION ---
+
+        // Prepare attachment with BASE64 content
+        attachments.push({
+          filename: `Invoice-${invoice.invoice_number}.pdf`,
+          content: base64Content, // Use the Base64 string
+        });
+        console.log(
+          `PDF attachment prepared successfully using Base64 encoded content.`
+        );
+      } catch (attachError) {
+        console.error("Error preparing PDF attachment:", attachError);
+        // Decide whether to proceed without attachment or fail
+        console.warn(
+          `Proceeding to send email without PDF attachment for invoice ${invoice.id}`
+        );
+      }
+    } else {
+      console.warn(
+        `No pdf_path found for invoice ${invoice.id}, sending email without attachment.`
+      );
+    }
 
     // 6. Send email via Resend
     const senderEmail =
-      Deno.env.get("RESEND_SENDER_EMAIL") || "noreply@example.com"; // Provide a default
+      Deno.env.get("RESEND_SENDER_EMAIL") || "noreply@example.com";
     const emailSubject = `Invoice #${invoice.invoice_number} from ${companyName}`;
 
-    console.log(`Sending invoice email to: ${clientEmail} from ${senderEmail}`);
-
-    const { data, error: emailError } = await resend.emails.send({
-      from: `${companyName} <${senderEmail}>`,
-      to: clientEmail,
-      subject: emailSubject,
-      html: emailHtml,
-      // attachments: [] // Add attachments if needed
-    });
-
-    if (emailError) {
-      console.error("Resend error:", emailError);
-      return new Response(JSON.stringify({ error: "Failed to send email" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("Email sent successfully:", data);
-
-    // 7. Return success response
-    return new Response(
-      JSON.stringify({ success: true, message: "Invoice email sent." }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }
+    console.log(
+      `Sending invoice email to: ${clientEmail} from ${senderEmail} ${
+        attachments.length > 0 ? "with attachment" : "without attachment"
+      }.`
     );
+
+    try {
+      const { data, error: emailError } = await resend.emails.send({
+        from: `${companyName} <${senderEmail}>`,
+        to: "nilaanjann.misra@gmail.com", // REMINDER: Keep test email or use clientEmail
+        subject: emailSubject,
+        html: emailHtml,
+        attachments: attachments, // Add the attachments array here (now uses 'content')
+      });
+
+      if (emailError) {
+        console.error("Resend error:", emailError);
+        return new Response(JSON.stringify({ error: "Failed to send email" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("Email sent successfully:", data);
+
+      // 7. Return success response
+      return new Response(
+        JSON.stringify({ success: true, message: "Invoice email sent." }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    } catch (error) {
+      console.error("Error processing request:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      return new Response(
+        JSON.stringify({
+          error: "Internal Server Error",
+          details: errorMessage,
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
   } catch (error) {
     console.error("Error processing request:", error);
-    // Type check the error before accessing properties
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(
@@ -250,8 +305,8 @@ serve(async (req) => {
   2. Make an HTTP request:
 
   curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/send-invoice-email' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
+    --header 'Authorization: Bearer <YOUR_ANON_KEY>' \
     --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    --data '{ "record": { "id": "your_invoice_id", "user_id": "your_user_id", "client_id": "your_client_id", "invoice_number": "INV-123", "due_date": "2024-12-31", "total": 150.00, "subtotal": 120.00, "tax": 30.00, "discount": 0, "pdf_path": "users/your_user_id/invoices/your_invoice_id/INV-123.pdf" } }'
 
 */

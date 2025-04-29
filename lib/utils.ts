@@ -33,3 +33,7 @@ export function getStatusColor(status: string) {
       return "bg-gray-100 text-gray-800";
   }
 }
+
+export function sanitizeFileName(fileName: string): string {
+  return fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+}

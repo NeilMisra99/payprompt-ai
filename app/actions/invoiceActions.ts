@@ -6,6 +6,8 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import { formatCurrency } from "@/lib/utils"; // Import for reminder message
+import { tasks } from "@trigger.dev/sdk/v3"; // Import Trigger.dev tasks
+import { generateInvoicePdf } from "../api/trigger/invoicePdf";
 
 // Define the schema for input validation (copied from invoice-form.tsx)
 const invoiceFormSchema = z.object({
@@ -52,6 +54,37 @@ interface InvoicePayload {
   payment_terms?: string | null;
 }
 
+// --- Helper to Trigger PDF Task ---
+async function triggerPdfGeneration(invoiceId: string, userId: string) {
+  try {
+    console.log(`Triggering PDF generation task for invoice ${invoiceId}`);
+    const payload = {
+      invoiceId: invoiceId,
+      userId: userId,
+    };
+
+    // Trigger the task (don't await the result here, it runs in the background)
+    await tasks.trigger<typeof generateInvoicePdf>(
+      "generate-invoice-pdf",
+      payload
+    );
+    console.log(
+      `PDF generation task triggered successfully for invoice ${invoiceId}`
+    );
+    return { success: true };
+  } catch (error) {
+    console.error(
+      `Error triggering PDF generation task for invoice ${invoiceId}:`,
+      error
+    );
+    // Return a warning, as the main invoice action might have succeeded
+    return {
+      success: false,
+      warning: "Invoice saved/sent, but failed to trigger PDF generation.",
+    };
+  }
+}
+
 // Action function
 export async function createInvoiceAction(
   // Raw form data comes in, needs parsing/validation
@@ -91,7 +124,6 @@ export async function createInvoiceAction(
   const discountAmount = (subtotal * data.discount) / 100;
   const total = subtotal + taxAmount - discountAmount;
   const invoiceId = uuidv4();
-  let invoiceRecordForFunction: InvoicePayload | null = null;
 
   try {
     // 4. Insert Invoice
@@ -127,11 +159,6 @@ export async function createInvoiceAction(
         success: false,
         error: `Failed to save invoice: ${invoiceError.message}`,
       };
-    }
-
-    // Store the successful payload if we might need to invoke the function
-    if (status === "sent") {
-      invoiceRecordForFunction = invoicePayload;
     }
 
     // 5. Insert Invoice Items
@@ -198,32 +225,12 @@ export async function createInvoiceAction(
       }
     }
 
-    // 7. Invoke Email Function if Sent
-    if (status === "sent" && invoiceRecordForFunction) {
-      console.log(
-        `Invoking send-invoice-email function for invoice ${invoiceId}...`
-      );
-      const { data: funcData, error: funcError } =
-        await supabase.functions.invoke("send-invoice-email", {
-          body: { record: invoiceRecordForFunction }, // Pass the invoice data matching webhook structure
-        });
-
-      if (funcError) {
-        // Log the error but don't fail the whole action
-        // The invoice is saved, but the email failed.
-        console.error("Error invoking send-invoice-email function:", funcError);
-        // Optionally return a specific message or flag to the client?
-        return {
-          success: true,
-          invoiceId: invoiceId,
-          status: status,
-          warning: "Invoice saved, but failed to trigger email.",
-        };
-      } else {
-        console.log(
-          "send-invoice-email function invoked successfully:",
-          funcData
-        );
+    // 7. Trigger PDF Generation Task if Sent
+    let pdfWarning: string | undefined = undefined;
+    if (status === "sent") {
+      const pdfResult = await triggerPdfGeneration(invoiceId, user.id);
+      if (!pdfResult.success) {
+        pdfWarning = pdfResult.warning;
       }
     }
 
@@ -232,7 +239,13 @@ export async function createInvoiceAction(
     revalidatePath(`/invoices/${invoiceId}`);
 
     // 9. Return Success
-    return { success: true, invoiceId: invoiceId, status: status };
+    const warning = pdfWarning;
+    return {
+      success: true,
+      invoiceId: invoiceId,
+      status: status,
+      warning: warning,
+    };
   } catch (error) {
     console.error("Unexpected Error Creating Invoice:", error);
     return { success: false, error: "An unexpected error occurred." };
@@ -403,50 +416,11 @@ export async function sendDraftInvoiceAction(
       reminderWarning = "Invoice sent, but failed to schedule reminder.";
     }
 
-    let emailWarning: string | undefined = undefined;
-    // 5. Invoke Email Function (Similar logic from createInvoiceAction)
-    try {
-      // Prepare payload similar to what the function expects
-      // This assumes the function needs the main invoice fields
-      const invoiceRecordForFunction = {
-        id: invoiceData.id,
-        user_id: invoiceData.user_id,
-        client_id: invoiceData.client_id,
-        invoice_number: invoiceData.invoice_number,
-        issue_date: invoiceData.issue_date,
-        due_date: invoiceData.due_date,
-        subtotal: invoiceData.subtotal,
-        tax: invoiceData.tax,
-        discount: invoiceData.discount,
-        total: invoiceData.total,
-        status: "sent", // Explicitly set status
-        notes: invoiceData.notes,
-        payment_terms: invoiceData.payment_terms,
-        // Add client/items if the function expects them nested
-        client: invoiceData.clients,
-        items: invoiceData.invoice_items,
-      };
-
-      console.log(
-        `Invoking send-invoice-email function for sent draft ${invoiceId}...`
-      );
-      const { error: funcError } = await supabase.functions.invoke(
-        "send-invoice-email",
-        {
-          body: { record: invoiceRecordForFunction },
-        }
-      );
-
-      if (funcError) {
-        console.error(
-          "Error invoking send-invoice-email function on Send:",
-          funcError
-        );
-        emailWarning = "Invoice sent, but failed to trigger email.";
-      }
-    } catch (e) {
-      console.error("Error invoking send-invoice-email function on Send:", e);
-      emailWarning = "Invoice sent, but failed to trigger email.";
+    // 5. Trigger PDF Generation Task
+    let pdfWarning: string | undefined = undefined;
+    const pdfResult = await triggerPdfGeneration(invoiceId, user.id);
+    if (!pdfResult.success) {
+      pdfWarning = pdfResult.warning;
     }
 
     // 6. Revalidate Cache using Tags
@@ -456,7 +430,7 @@ export async function sendDraftInvoiceAction(
     revalidateTag("reminders"); // Revalidate reminders tag as well
 
     // Consolidate warnings if any
-    const warning = reminderWarning || emailWarning;
+    const warning = reminderWarning || pdfWarning;
 
     return { success: true, message: "Invoice sent successfully.", warning };
   } catch (error: unknown) {
@@ -651,26 +625,12 @@ export async function updateInvoiceAction(
       }
     }
 
-    // 7. Invoke Email Function if status changed to 'sent'
-    let emailWarning: string | undefined = undefined;
+    // 7. Trigger PDF Generation Task if Sent
+    let pdfWarning: string | undefined = undefined;
     if (status === "sent") {
-      const { error: funcError } = await supabase.functions.invoke(
-        "send-invoice-email",
-        {
-          // Re-fetch the full invoice record to pass to the function?
-          // Or pass the updated payload? Let's pass the payload for now
-          body: {
-            record: { ...invoicePayload, id: invoiceId, user_id: user.id },
-          },
-        }
-      );
-
-      if (funcError) {
-        console.error(
-          "Error invoking send-invoice-email function (Update):",
-          funcError
-        );
-        emailWarning = "Invoice updated, but failed to trigger email.";
+      const pdfResult = await triggerPdfGeneration(invoiceId, user.id);
+      if (!pdfResult.success) {
+        pdfWarning = pdfResult.warning;
       }
     }
 
@@ -682,7 +642,7 @@ export async function updateInvoiceAction(
     revalidatePath(`/invoices/${invoiceId}/edit`); // Revalidate edit path too?
 
     // 9. Return Success (potentially with warnings)
-    const warning = reminderWarning || emailWarning;
+    const warning = reminderWarning || pdfWarning;
     return {
       success: true,
       invoiceId: invoiceId,

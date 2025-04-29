@@ -45,3 +45,5 @@ docs/
 seed.sql
 
 .temp/
+
+.trigger

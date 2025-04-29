@@ -16,14 +16,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../ui/button";
 
 interface SidebarProps {
   user: {
     id: string;
     email?: string;
+    avatar_url?: string | null;
+    full_name?: string | null;
+    company_logo_url?: string | null;
   };
 }
 
@@ -82,8 +86,18 @@ export default function Sidebar({ user }: SidebarProps) {
     return null;
   }
 
-  // Get user initials for avatar
-  const initials = user.email ? user.email.charAt(0).toUpperCase() : "U";
+  // Get user initials for avatar fallback (prefer full_name if available)
+  const displayName = user.full_name ?? user.email ?? "User";
+  const initials = user.full_name
+    ? user.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : user.email
+      ? user.email.charAt(0).toUpperCase()
+      : "U";
 
   const links = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -92,6 +106,8 @@ export default function Sidebar({ user }: SidebarProps) {
     { name: "Reminders", href: "/reminders", icon: Clock },
     { name: "Notifications", href: "/notifications", icon: Bell },
   ];
+
+  const companyLogoMissing = !user.company_logo_url;
 
   return (
     <div className="hidden lg:flex flex-col w-64 bg-sidebar" ref={sidebarRef}>
@@ -137,34 +153,59 @@ export default function Sidebar({ user }: SidebarProps) {
       {/* User Avatar and Popover */}
       <div className="p-2 mt-auto">
         <Popover>
-          <PopoverTrigger className="flex w-full items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary transition-colors">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="truncate text-sm font-medium">
-              {user.email ?? "User"}
-            </span>
+          {/* PopoverTrigger renders a button by default */}
+          <PopoverTrigger className="flex w-full items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary transition-colors cursor-pointer">
+            {/* Avatar Section */}
+            <div className="relative flex-shrink-0">
+              <Avatar className="h-10 w-10">
+                {user.avatar_url && (
+                  <AvatarImage src={user.avatar_url} alt={displayName} />
+                )}
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {/* Red dot indicator */}
+              {companyLogoMissing && (
+                <span
+                  className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-sidebar"
+                  title="Company logo missing"
+                />
+              )}
+            </div>
+
+            {/* Display Name */}
+            <span className="truncate text-sm font-medium">{displayName}</span>
           </PopoverTrigger>
-          <PopoverContent className="w-56 mb-2" align="start" side="top">
+
+          <PopoverContent
+            className="w-56 mb-2"
+            align="start"
+            side="top"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             <div className="flex flex-col space-y-1">
               <Link
                 href="/settings"
-                className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary transition-colors"
+                className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-primary transition-colors relative" // Added relative for potential dot
                 prefetch={true}
               >
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
+                {/* Red dot indicator for settings link as well */}
+                {companyLogoMissing && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 block h-2 w-2 rounded-full bg-red-500" />
+                )}
               </Link>
-              <button
+              <Button
                 onClick={handleSignOut}
                 disabled={isSigningOut}
-                className="flex w-full items-center px-3 py-2 text-sm font-medium text-destructive hover:bg-accent rounded-md transition-colors"
+                variant="ghost"
+                className="flex w-full items-center justify-start px-3 py-2 text-sm font-medium text-destructive hover:bg-accent rounded-md transition-colors"
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="h-4 w-4" />
                 {isSigningOut ? "Signing out..." : "Sign Out"}
-              </button>
+              </Button>
             </div>
           </PopoverContent>
         </Popover>

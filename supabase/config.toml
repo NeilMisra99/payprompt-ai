@@ -31,3 +31,12 @@ entrypoint = "./functions/send-invoice-email/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-invoice-email/*.html" ]
+
+[auth.email.template.confirmation]
+subject = "Confirm your email"
+content_path = "./supabase/email-templates/confirm-email.html"
+
+
+[auth.email]
+enable_confirmations = true
+

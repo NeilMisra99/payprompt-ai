@@ -294,10 +294,23 @@ app.get("/invoices/new-data", async (c) => {
     .eq("user_id", user.id)
     .order("name");
 
-  // Fetch profile fields needed by InvoiceForm
+  // Fetch profile fields needed by InvoiceForm - UPDATED FIELDS
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, company_name, company_address, company_logo") // Select fields needed by InvoiceForm
+    .select(
+      `
+      id,
+      company_name,
+      full_name,
+      company_logo_url, 
+      company_address_street,
+      company_address_line2,
+      company_address_city,
+      company_address_state,
+      company_address_postal_code,
+      company_address_country
+    `
+    )
     .eq("id", user.id)
     .single();
 
@@ -447,7 +460,20 @@ app.get("/invoices/:id/edit-data", async (c) => {
         .order("name"),
       supabase
         .from("profiles")
-        .select("id, company_name, company_address, company_logo") // Select fields needed by InvoiceForm
+        .select(
+          `
+          id,
+          company_name,
+          full_name,
+          company_logo_url,
+          company_address_street,
+          company_address_line2,
+          company_address_city,
+          company_address_state,
+          company_address_postal_code,
+          company_address_country
+        `
+        )
         .eq("id", user.id)
         .single(),
     ]);
