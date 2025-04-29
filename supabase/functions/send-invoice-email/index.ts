@@ -246,7 +246,7 @@ serve(async (req) => {
     try {
       const { data, error: emailError } = await resend.emails.send({
         from: `${companyName} <${senderEmail}>`,
-        to: "nilaanjann.misra@gmail.com", // REMINDER: Keep test email or use clientEmail
+        to: clientEmail, // REMINDER: Keep test email or use clientEmail
         subject: emailSubject,
         html: emailHtml,
         attachments: attachments, // Add the attachments array here (now uses 'content')
