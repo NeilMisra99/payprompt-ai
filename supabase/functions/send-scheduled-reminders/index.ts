@@ -22,6 +22,7 @@ interface ReminderPayload {
   total: number;
   due_date: string;
   user_id: string;
+  company_name: string | null;
 }
 
 interface PaymentHistorySummary {
@@ -43,7 +44,6 @@ Deno.serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const RESEND_SENDER_EMAIL =
       Deno.env.get("RESEND_SENDER_EMAIL") || "noreply@example.com"; // Provide a default
-    const COMPANY_NAME = Deno.env.get("COMPANY_NAME") || "[Your Company Name]";
 
     if (!GOOGLE_API_KEY || !RESEND_API_KEY) {
       console.error(
@@ -61,6 +61,21 @@ Deno.serve(async (req) => {
     );
 
     const resend = new Resend(RESEND_API_KEY); // Instantiate Resend client
+
+    // --- Use Company Name from Payload ---
+    const userCompanyName =
+      payload.company_name ||
+      Deno.env.get("COMPANY_NAME") ||
+      "[Your Company Name]"; // Use payload, fallback to env, then default
+    if (payload.company_name) {
+      console.info(
+        `Using company name '${userCompanyName}' from payload for user ${payload.user_id}`
+      );
+    } else {
+      console.warn(
+        `company_name not found in payload for user ${payload.user_id}. Using fallback: '${userCompanyName}'.`
+      );
+    }
 
     // --- 1. Fetch Payment History ---
     let paymentHistorySummary: PaymentHistorySummary = {
@@ -131,7 +146,7 @@ Deno.serve(async (req) => {
     }
 
     const prompt = `
-You are an assistant for ${COMPANY_NAME} helping write friendly but professional payment reminders.
+You are an assistant for ${userCompanyName} helping write friendly but professional payment reminders.
 Client Payment History Context: ${historyContext}
 ---
 Write a ${reminderType} payment reminder message body (no salutation like 'Dear X' or subject line) for invoice #${
@@ -194,7 +209,7 @@ Instructions:
         style: "currency",
         currency: "USD",
       }),
-      companyName: COMPANY_NAME,
+      companyName: userCompanyName,
     };
 
     // Generate HTML directly using the imported function

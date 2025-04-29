@@ -57,6 +57,7 @@ export function CreateReminderButton({
   const [paymentHistory, setPaymentHistory] =
     useState<PaymentHistorySummary | null>(null);
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -78,6 +79,16 @@ export function CreateReminderButton({
 
   useEffect(() => {
     if (isOpen) {
+      const fetchUser = async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          setUserId(user.id);
+        }
+      };
+      fetchUser();
+
       try {
         const dueDateObj = new Date(dueDate);
         const today = startOfDay(new Date());
@@ -178,16 +189,24 @@ The due date is ${format(new Date(dueDate), "MMMM d, yyyy")}. `;
   };
 
   const handleSend = async () => {
+    if (!message.trim()) {
+      toast.error("Please generate or enter a reminder message");
+      return;
+    }
+
+    setIsLoading(true);
+
+    if (!userId) {
+      toast.error("Could not identify user. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      if (!message.trim()) {
-        toast.error("Please generate or enter a reminder message");
-        return;
-      }
-
-      setIsLoading(true);
-
       const { error: insertError } = await supabase.from("reminders").insert({
         invoice_id: invoiceId,
+        client_id: clientId,
+        user_id: userId,
         type: reminderType,
         message: message,
         sent_at: new Date().toISOString(),

@@ -407,10 +407,22 @@ Provide the reminder message first, followed by '--- SUGGESTION ---', then the s
     setIsSending(true);
     setError(null);
 
+    const selectedInvoice = invoices.find((inv) => inv.id === data.invoiceId);
+    if (!selectedInvoice || !selectedInvoice.clients?.id) {
+      const msg = "Selected invoice or client data not found.";
+      setError(msg);
+      toast.error(msg);
+      setIsSending(false);
+      return;
+    }
+    const clientId = selectedInvoice.clients.id;
+
     try {
       const supabase = createClient();
       const { error: insertError } = await supabase.from("reminders").insert({
         invoice_id: data.invoiceId,
+        user_id: userId,
+        client_id: clientId,
         type: data.type,
         message: finalMessage,
         status: "sent",
