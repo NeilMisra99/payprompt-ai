@@ -75,70 +75,72 @@ export default async function SettingsPage() {
   const userNameForFallback = userProfile.full_name ?? user.email; // Use email as secondary fallback
 
   return (
-    <div className="flex flex-col space-y-6 p-4 md:p-8">
-      {/* Back Button */}
-      <AnimatedContainer variant="fadeIn" delay={0.1}>
-        <Button variant="outline" asChild className="w-fit mb-4">
-          <Link href="/dashboard" prefetch={true}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
-      </AnimatedContainer>
+    <div className="-mt-16">
+      <div className="flex flex-col space-y-6 p-4 md:p-8">
+        {/* Back Button */}
+        <AnimatedContainer variant="fadeIn" delay={0.1}>
+          <Button variant="outline" asChild className="w-fit mb-4">
+            <Link href="/dashboard" prefetch={true}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          </Button>
+        </AnimatedContainer>
 
-      {/* Main Content Area: Flex row on medium+ screens */}
-      <div className="flex flex-col md:flex-row md:space-x-8 lg:space-x-12 space-y-8 md:space-y-0">
-        {/* Left Column: Animated Image Upload Switcher */}
-        <div className="flex flex-col items-center md:w-auto md:pt-4 mt-4">
-          {/* Removed individual triggers and replaced with the switcher */}
-          <AnimatedUploadSwitcher
-            userId={user.id}
-            currentAvatarUrl={userProfile.avatar_url ?? null}
-            currentLogoUrl={userProfile.company_logo_url ?? null}
-            userName={userNameForFallback || "User"}
-          />
-          {/* Conditionally render Alert outside the switcher */}
-          {!userProfile.company_logo_url && (
-            <Alert
-              variant="destructive"
-              className="w-full max-w-xs text-center mt-4"
-            >
-              <Info className="h-4 w-4" />
-              <AlertTitle className="text-sm">
-                Company Logo Recommended
-              </AlertTitle>
-              <AlertDescription className="text-xs">
-                Upload logo for more professional invoices.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+        {/* Main Content Area: Flex row on medium+ screens */}
+        <div className="flex flex-col md:flex-row md:space-x-8 lg:space-x-12 space-y-8 md:space-y-0">
+          {/* Left Column: Animated Image Upload Switcher */}
+          <div className="flex flex-col items-center md:w-auto md:pt-4 mt-4">
+            {/* Removed individual triggers and replaced with the switcher */}
+            <AnimatedUploadSwitcher
+              userId={user.id}
+              currentAvatarUrl={userProfile.avatar_url ?? null}
+              currentLogoUrl={userProfile.company_logo_url ?? null}
+              userName={userNameForFallback || "User"}
+            />
+            {/* Conditionally render Alert outside the switcher */}
+            {!userProfile.company_logo_url && (
+              <Alert
+                variant="destructive"
+                className="w-full max-w-xs text-center mt-4"
+              >
+                <Info className="h-4 w-4" />
+                <AlertTitle className="text-sm">
+                  Company Logo Recommended
+                </AlertTitle>
+                <AlertDescription className="text-xs">
+                  Upload logo for more professional invoices.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
 
-        {/* Right Column: Settings Tabs */}
-        <div className="flex-1">
-          <AnimatedContainer variant="slideUp" delay={0.2}>
-            <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
-                <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="invoice">Invoice Settings</TabsTrigger>
-              </TabsList>
+          {/* Right Column: Settings Tabs */}
+          <div className="flex-1">
+            <AnimatedContainer variant="slideUp" delay={0.2}>
+              <Tabs defaultValue="profile" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 md:w-auto md:inline-flex">
+                  <TabsTrigger value="profile">Profile</TabsTrigger>
+                  <TabsTrigger value="invoice">Invoice Settings</TabsTrigger>
+                </TabsList>
 
-              {/* Profile Tab Content */}
-              <TabsContent value="profile" className="mt-6 space-y-6">
-                {/* Remove the h3 and Separator from here, they are part of the form now conceptually */}
-                {/* <h3 className="text-lg font-medium">Profile Settings</h3> */}
-                {/* The image upload triggers are now in the left column */}
-                {/* <Separator /> */}
-                <ProfileForm profile={userProfile} />
-              </TabsContent>
+                {/* Profile Tab Content */}
+                <TabsContent value="profile" className="mt-6 space-y-6">
+                  {/* Remove the h3 and Separator from here, they are part of the form now conceptually */}
+                  {/* <h3 className="text-lg font-medium">Profile Settings</h3> */}
+                  {/* The image upload triggers are now in the left column */}
+                  {/* <Separator /> */}
+                  <ProfileForm profile={userProfile} />
+                </TabsContent>
 
-              {/* Invoice Tab Content */}
-              <TabsContent value="invoice" className="mt-6 space-y-6">
-                {/* <h3 className="text-lg font-medium">Invoice Settings</h3> */}
-                <InvoiceSettingsForm profile={userProfile} />
-              </TabsContent>
-            </Tabs>
-          </AnimatedContainer>
+                {/* Invoice Tab Content */}
+                <TabsContent value="invoice" className="mt-6 space-y-6">
+                  {/* <h3 className="text-lg font-medium">Invoice Settings</h3> */}
+                  <InvoiceSettingsForm profile={userProfile} />
+                </TabsContent>
+              </Tabs>
+            </AnimatedContainer>
+          </div>
         </div>
       </div>
     </div>
