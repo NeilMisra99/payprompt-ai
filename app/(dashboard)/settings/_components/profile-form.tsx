@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Form,
   FormControl,
@@ -26,6 +32,7 @@ import {
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { updateProfile } from "@/app/actions/profileActions";
+import { TimezoneCombobox } from "@/components/ui/timezone-combobox";
 
 // Define InvoiceSettings structure
 export interface InvoiceSettings {
@@ -51,6 +58,7 @@ export interface Profile {
   avatar_url?: string | null;
   company_logo_url?: string | null;
   invoice_settings?: InvoiceSettings; // Add optional invoice_settings
+  timezone?: string | null; // <-- Add timezone field
 }
 
 // Updated schema slightly: explicitly allow null for optional fields
@@ -75,6 +83,7 @@ const profileFormSchema = z.object({
   company_address_state: z.string().nullish(),
   company_address_postal_code: z.string().nullish(),
   company_address_country: z.string().nullish(),
+  timezone: z.string().nullish(), // <-- Add timezone schema
   // company_logo_url removed - handled by dedicated component
 });
 
@@ -99,6 +108,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     company_address_state: profile?.company_address_state,
     company_address_postal_code: profile?.company_address_postal_code,
     company_address_country: profile?.company_address_country,
+    timezone: profile?.timezone ?? "Etc/UTC",
   };
 
   const form = useForm<ProfileFormValues>({
@@ -115,10 +125,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       // Create FormData from the validated form data
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, String(value)); // Send null/undefined as empty string or omit?
+        // Append timezone explicitly
+        if (key === "timezone") {
+          formData.append(key, value || "UTC"); // Ensure UTC if null/empty
+        } else if (value !== null && value !== undefined) {
+          formData.append(key, String(value));
         } else {
-          formData.append(key, ""); // Send empty string for null/undefined? Adjust as needed by action
+          formData.append(key, "");
         }
       });
 
@@ -183,6 +196,40 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                           placeholder="Your username"
                           {...field}
                           value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <FormLabel>Default Timezone</FormLabel>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="right"
+                            align="center"
+                            className="max-w-[400px]"
+                          >
+                            <p className="text-sm">
+                              Sets the default timezone for calculating invoice
+                              due dates. Reminders are also sent based on this
+                              timezone.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <FormControl>
+                        <TimezoneCombobox
+                          value={field.value}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />

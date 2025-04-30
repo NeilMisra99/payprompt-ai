@@ -20,6 +20,7 @@ interface ProfileUpdateData {
   username?: string | null;
   avatar_url?: string | null; // URL passed from client after upload
   company_logo_url?: string | null; // URL passed from client after upload
+  timezone?: string | null; // <-- Add timezone
 }
 
 // Explicitly list the keys we expect and can handle from FormData
@@ -36,6 +37,7 @@ const profileUpdateKeys: Array<keyof ProfileUpdateData> = [
   "username",
   "avatar_url",
   "company_logo_url",
+  "timezone", // <-- Add timezone
 ];
 
 // Consolidated action to update profile fields (including pre-uploaded image URLs)

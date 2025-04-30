@@ -17,26 +17,26 @@ interface Invoice {
   user_id: string;
   client_id: string;
   invoice_number: string;
-  due_date: string; // Assuming string date YYYY-MM-DD
+  due_date: string; // Keep original date string
+  due_at: string | null; // <-- Add due_at timestamp
   total: number;
   subtotal: number;
   tax: number;
   discount: number;
-  pdf_path?: string | null; // Add pdf_path field
-  // ... other invoice fields potentially needed ...
+  pdf_path?: string | null;
+  timezone?: string | null; // <-- Add invoice timezone override
 }
 
 interface Client {
   id: string;
   name: string;
   email: string;
-  // ... other client fields ...
 }
 
 interface Profile {
   id: string;
   company_name?: string | null;
-  // ... other profile fields ...
+  timezone?: string | null; // <-- Add profile timezone
 }
 
 // Interface for data fetched from invoice_items table
@@ -100,7 +100,7 @@ serve(async (req) => {
     // Fetch Profile
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, company_name")
+      .select("id, company_name, timezone") // <-- Fetch timezone
       .eq("id", invoice.user_id)
       .single<Profile>();
 
@@ -147,40 +147,82 @@ serve(async (req) => {
     const clientName = clientData.name || "Valued Client";
     const pdfPath = invoice.pdf_path; // Get PDF path from the invoice record
 
+    // Determine authoritative timezone
+    const authoritativeTimezone =
+      invoice.timezone || profileData?.timezone || "Etc/UTC"; // Default to Etc/UTC
+
     console.log("Fetched profile data:", profileData);
     console.log(`Resolved companyName: '${companyName}'`);
     console.log(`PDF path from record: ${pdfPath}`);
 
-    // Format currency and date
+    // Format currency and DUE DATE using timezone
     const formattedSubtotal = formatCurrency(invoice.subtotal);
     const formattedTotal = formatCurrency(invoice.total);
     const formattedTax =
       invoice.tax > 0 ? formatCurrency(invoice.tax) : undefined;
     const formattedDiscount =
       invoice.discount > 0 ? formatCurrency(invoice.discount) : undefined;
-    const formattedDueDate = new Date(invoice.due_date).toLocaleDateString(
-      "en-US",
-      {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+
+    let formattedDueDate = "Invalid Date";
+    if (invoice.due_at) {
+      try {
+        // Use native Intl.DateTimeFormat
+        const dateObject = new Date(invoice.due_at);
+        formattedDueDate = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "short", // Abbreviated month (e.g., May)
+          day: "numeric",
+          timeZone: authoritativeTimezone, // Use the determined timezone
+          timeZoneName: "short", // Request the timezone abbreviation (e.g., EST, UTC)
+        }).format(dateObject);
+      } catch (tzError) {
+        console.error("Error formatting due_at with Intl:", tzError);
+        // Fallback using simple date string and UTC formatting
+        try {
+          const fallbackDate = new Date(invoice.due_date);
+          formattedDueDate =
+            new Intl.DateTimeFormat("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            }).format(fallbackDate) + " (Date Only - UTC)"; // Add note about fallback
+        } catch (dateError) {
+          console.error("Error formatting fallback due_date:", dateError);
+          formattedDueDate = invoice.due_date; // Raw fallback
+        }
       }
-    );
-    // const appBaseUrl = Deno.env.get("APP_BASE_URL") || "http://localhost:3000"; // Removed
-    // const invoiceUrl = `${appBaseUrl}/invoices/${invoice.id}`; // Removed
+    } else {
+      // Fallback if due_at is somehow null
+      console.warn(
+        `Invoice ${invoice.id} missing due_at, formatting due_date.`
+      );
+      try {
+        const fallbackDate = new Date(invoice.due_date);
+        formattedDueDate =
+          new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+          }).format(fallbackDate) + " (Date Only - UTC)";
+      } catch (dateError) {
+        console.error("Error formatting fallback due_date:", dateError);
+        formattedDueDate = invoice.due_date; // Raw fallback
+      }
+    }
 
     // Prepare props for the template
     const templateProps: InvoiceEmailTemplateProps = {
       clientName: clientName,
       invoiceNumber: invoice.invoice_number,
-      formattedDueDate: formattedDueDate,
+      formattedDueDate: formattedDueDate, // <-- Pass the timezone-aware string
       formattedTotal: formattedTotal,
       formattedSubtotal: formattedSubtotal,
       formattedTax: formattedTax,
       formattedDiscount: formattedDiscount,
       companyName: companyName,
       items: invoiceItems,
-      // invoiceUrl: invoiceUrl, // Removed
     };
     console.log("Props passed to template:", templateProps);
     const emailHtml = InvoiceEmailTemplate(templateProps);
@@ -246,7 +288,7 @@ serve(async (req) => {
     try {
       const { data, error: emailError } = await resend.emails.send({
         from: `${companyName} <${senderEmail}>`,
-        to: clientEmail, // REMINDER: Keep test email or use clientEmail
+        to: "nilaanjann.misra@gmail.com", // REMINDER: Keep test email or use clientEmail
         subject: emailSubject,
         html: emailHtml,
         attachments: attachments, // Add the attachments array here (now uses 'content')

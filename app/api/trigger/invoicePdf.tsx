@@ -13,6 +13,7 @@ import { z } from "zod";
 import createClient from "./create-client";
 import { format } from "date-fns"; // For formatting dates if needed
 import path from "node:path"; // Needed for resolving font path
+import { formatInTimeZone } from "date-fns-tz"; // <-- Import formatting function
 
 // Register Geist Mono font
 // Assuming the script runs relative to the project root
@@ -44,6 +45,7 @@ interface InvoicePdfData {
     state?: string | null;
     postalCode?: string | null;
     country?: string | null;
+    timezone?: string | null; // <-- Add company timezone
     // Add phone etc. if available and needed
   };
   client: {
@@ -56,7 +58,8 @@ interface InvoicePdfData {
   };
   invoiceNumber: string;
   invoiceDate: string; // Formatted date
-  dueDate: string; // Formatted date
+  dueDate: string; // Formatted date (will now include timezone info)
+  dueAt: string; // <-- Add raw due_at timestamp
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -94,6 +97,7 @@ type ProfileFromDb = {
   company_address_state?: string | null;
   company_address_postal_code?: string | null;
   company_address_country?: string | null;
+  timezone?: string | null; // <-- Add profile timezone
 };
 
 // Type for the result of the main invoice query, including relations
@@ -105,6 +109,8 @@ type InvoiceWithRelations = {
   invoice_number: string;
   issue_date: string;
   due_date: string;
+  due_at: string | null; // <-- Add due_at (nullable)
+  timezone: string | null; // <-- Add invoice-specific timezone (nullable)
   subtotal: number;
   tax: number;
   discount: number;
@@ -507,11 +513,11 @@ export const generateInvoicePdf = task({
     const supabase = createClient(); // Use service role client
 
     try {
-      // 1. Fetch the core Invoice data
+      // 1. Fetch the core Invoice data (add due_at and timezone)
       logger.info("Fetching core invoice data (service role)...");
       const { data: invoice, error: invoiceError } = await supabase
         .from("invoices")
-        .select("*, clients(*)") // Include client fetch here
+        .select("*, due_at, timezone, clients(*)") // <-- Fetch due_at and timezone
         .eq("id", payload.invoiceId)
         .eq("user_id", payload.userId)
         .maybeSingle<InvoiceWithRelations>();
@@ -584,12 +590,12 @@ export const generateInvoicePdf = task({
       }
       logger.info(`Successfully fetched ${items.length} invoice items`);
 
-      // 4. Fetch Profile data - UPDATED SELECT
+      // 4. Fetch Profile data (add timezone)
       logger.info("Fetching profile data...", { userId: payload.userId });
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select(
-          ` 
+          `
           company_name,
           company_logo_url,
           company_email,
@@ -598,8 +604,9 @@ export const generateInvoicePdf = task({
           company_address_city,
           company_address_state,
           company_address_postal_code,
-          company_address_country
-        `
+          company_address_country,
+          timezone 
+        ` // <-- Fetch profile timezone
         )
         .eq("id", payload.userId)
         .maybeSingle<ProfileFromDb>();
@@ -616,7 +623,38 @@ export const generateInvoicePdf = task({
         found: !!profile,
       });
 
-      // 5. Map fetched data to InvoicePdfData structure - UPDATED MAPPING
+      // 5. Map fetched data to InvoicePdfData structure
+      // Determine the authoritative timezone (invoice override > profile default > UTC)
+      const authoritativeTimezone =
+        invoice.timezone || profile?.timezone || "UTC";
+
+      // Format the due date using the authoritative timezone
+      let formattedDueDate = "Invalid Date";
+      if (invoice.due_at) {
+        try {
+          // Example format: "MMM d, yyyy zzz" => "May 15, 2025 EST"
+          formattedDueDate = formatInTimeZone(
+            invoice.due_at, // Use the timestamptz value
+            authoritativeTimezone,
+            "MMM d, yyyy zzz" // Format includes timezone abbreviation
+          );
+        } catch (tzError) {
+          logger.error("Timezone formatting error", {
+            tzError,
+            timezone: authoritativeTimezone,
+            dueAt: invoice.due_at,
+          });
+          // Fallback to simple date formatting if timezone formatting fails
+          formattedDueDate = format(new Date(invoice.due_date), "MMM d, yyyy");
+        }
+      } else {
+        // Fallback for older invoices without due_at (shouldn't happen after backfill)
+        formattedDueDate = format(new Date(invoice.due_date), "MMM d, yyyy");
+        logger.warn("Invoice missing due_at, falling back to due_date", {
+          invoiceId: invoice.id,
+        });
+      }
+
       const invoiceData: InvoicePdfData = {
         company: {
           name: profile?.company_name ?? null,
@@ -628,17 +666,19 @@ export const generateInvoicePdf = task({
           state: profile?.company_address_state ?? null,
           postalCode: profile?.company_address_postal_code ?? null,
           country: profile?.company_address_country ?? null,
+          timezone: profile?.timezone ?? null, // Pass profile timezone
         },
         client: {
           name: invoice.clients?.name ?? null,
           contactPerson: invoice.clients?.contact_person ?? null,
           email: invoice.clients?.email ?? null,
           phone: invoice.clients?.phone ?? null,
-          address: invoice.clients?.address ?? null, // Keep single line for client for now
+          address: invoice.clients?.address ?? null,
         },
         invoiceNumber: invoice.invoice_number,
-        invoiceDate: format(new Date(invoice.issue_date), "MM/dd/yyyy"),
-        dueDate: format(new Date(invoice.due_date), "MM/dd/yyyy"),
+        invoiceDate: format(new Date(invoice.issue_date), "MMM d, yyyy"), // Keep issue date simple
+        dueDate: formattedDueDate, // <-- Use the calculated timezone-aware string
+        dueAt: invoice.due_at || invoice.due_date, // <-- Pass raw due_at (or fallback)
         lineItems: items.map((item: InvoiceItemFromDb) => ({
           description: item.description ?? "",
           quantity: item.quantity ?? 0,
@@ -650,9 +690,9 @@ export const generateInvoicePdf = task({
         discount: invoice.discount ?? 0,
         totalAmountDue: invoice.total ?? 0,
         notes: invoice.notes ?? null,
-        paymentTerms: invoice.payment_terms ?? null, // Map payment_terms
+        paymentTerms: invoice.payment_terms ?? null,
       };
-      logger.info("Successfully mapped fetched data");
+      logger.info("Successfully mapped fetched data with timezone formatting");
 
       // 6. Render the React component to a PDF buffer
       logger.info("Rendering PDF to buffer...");

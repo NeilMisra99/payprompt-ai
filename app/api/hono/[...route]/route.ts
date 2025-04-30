@@ -87,6 +87,9 @@ app.get("/clients", async (c) => {
     return c.json({ error: "Failed to fetch clients" }, 500);
   }
 
+  // Log the fetched data before returning
+  console.log("Fetched clients data:", JSON.stringify(data, null, 2));
+
   return c.json(data ?? []);
 });
 
@@ -159,6 +162,9 @@ app.get("/invoices", async (c) => {
     console.error("Error fetching invoices:", error);
     return c.json({ error: "Failed to fetch invoices" }, 500);
   }
+
+  // Log the fetched data before returning
+  console.log("Fetched invoices data:", JSON.stringify(data, null, 2));
 
   return c.json(data ?? []);
 });
