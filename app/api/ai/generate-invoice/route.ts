@@ -102,6 +102,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Add check for past invoices
+    if (!pastInvoices || pastInvoices.length === 0) {
+      console.log(
+        `No past invoices found for client ${clientId}. Skipping AI suggestion.`
+      );
+      // Return a specific response that the frontend can handle
+      return NextResponse.json(
+        {
+          message: "No past invoice history found. AI suggestion skipped.",
+          suggestionSkipped: true, // Add a flag for easier frontend handling
+        },
+        { status: 200 } // Use 200 OK as the request was valid, but no suggestion generated
+      );
+    }
+
     // 3. Prompt Engineering & AI Integration
     const systemPrompt = `You are an AI assistant helping a user create a new invoice for their client. Based on the client's past invoices provided below, generate a suggested draft for a new invoice in ${currency}. Focus on common line items and estimate a reasonable due date (around 14-30 days from today, ${
       new Date().toISOString().split("T")[0]
