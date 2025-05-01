@@ -24,6 +24,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Invoice
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -42,6 +43,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Client
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -56,7 +58,11 @@ export const columns: ColumnDef<Invoice>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as InvoiceStatus;
-      return <StatusBadge status={status} />;
+      return (
+        <div>
+          <StatusBadge status={status} />
+        </div>
+      );
     },
   },
   {
@@ -64,10 +70,11 @@ export const columns: ColumnDef<Invoice>[] = [
     filterFn: "inNumberRange",
     header: ({ column }) => {
       return (
-        <div className="text-right">
+        <div>
           <Button
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="!pl-0"
           >
             Amount
             <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -77,9 +84,7 @@ export const columns: ColumnDef<Invoice>[] = [
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("total"));
-      return (
-        <div className="text-right font-medium">{formatCurrency(amount)}</div>
-      );
+      return <div className="font-medium">{formatCurrency(amount)}</div>;
     },
   },
   // Add more columns here if needed (e.g., client name, due date)

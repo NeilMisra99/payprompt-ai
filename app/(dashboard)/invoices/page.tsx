@@ -1,7 +1,3 @@
-import Link from "next/link";
-// import { createClient } from "@/utils/supabase/server"; // Remove direct Supabase client
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react"; // Removed unused icons
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // Removed manual Table imports
 import { DataTable } from "@/components/ui/data-table"; // Import DataTable
@@ -11,6 +7,7 @@ import {
 } from "./_components/columns"; // Import columns and type
 // Removed formatCurrency, formatDate, StatusBadge imports (handled in columns.tsx)
 import { AnimatedContainer } from "@/components/ui/animated-container";
+import { CreateInvoiceLink } from "./_components/create-invoice-link"; // Import the new component
 // import { unstable_cache } from "next/cache"; // Remove unstable_cache
 // import type { SupabaseClient } from "@supabase/supabase-js"; // Remove SupabaseClient type
 import { cookies } from "next/headers"; // Import cookies
@@ -18,6 +15,7 @@ import { cookies } from "next/headers"; // Import cookies
 // Define the Invoice type based on API response
 // Keep this interface for the fetch function's return type
 interface ClientStub {
+  id: string; // Assuming clients have an ID
   name: string | null;
 }
 
@@ -31,6 +29,39 @@ interface FetchedInvoice {
   clients: ClientStub | null;
   user_id: string;
   created_at: string;
+}
+
+// Function to fetch clients from the API endpoint
+async function fetchClients(token: string): Promise<ClientStub[]> {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const url = `${baseUrl}/api/hono/clients`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: token,
+      },
+      cache: "force-cache",
+      next: { tags: ["clients"] }, // Tag for revalidation
+    });
+
+    if (response.status === 401) {
+      console.warn("Unauthorized fetching clients");
+      return [];
+    }
+
+    if (!response.ok) {
+      console.error(`HTTP error! status: ${response.status}`);
+      throw new Error(`Failed to fetch clients: ${response.statusText}`);
+    }
+
+    const data: ClientStub[] = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching clients:", error);
+    return [];
+  }
 }
 
 // Function to fetch invoices from the API endpoint
@@ -68,7 +99,14 @@ async function fetchInvoices(token: string): Promise<FetchedInvoice[]> {
 
 export default async function InvoicesPage() {
   const token = await cookies();
-  const fetchedInvoices = await fetchInvoices(token.toString());
+  // Fetch both invoices and clients in parallel
+  const [fetchedInvoices, fetchedClients] = await Promise.all([
+    fetchInvoices(token.toString()),
+    fetchClients(token.toString()),
+  ]);
+
+  // Determine if there are any clients
+  const hasClients = fetchedClients.length > 0;
 
   // Prepare data for DataTable - map to the structure expected by columns.tsx
   const invoicesForTable: InvoiceColumnType[] = fetchedInvoices.map((inv) => ({
@@ -86,12 +124,7 @@ export default async function InvoicesPage() {
             <p className="text-muted-foreground">Manage your invoices</p>{" "}
             {/* Use muted-foreground */}
           </div>
-          <Link href="/invoices/new" prefetch={true}>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Invoice
-            </Button>
-          </Link>
+          <CreateInvoiceLink hasClients={hasClients} />
         </div>
       </AnimatedContainer>
 

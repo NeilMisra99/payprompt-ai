@@ -191,6 +191,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Invoice #
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -210,6 +211,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Client
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -228,6 +230,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Issue Date
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -245,6 +248,7 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="!pl-0"
         >
           Due Date
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -262,11 +266,9 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="w-full" // Make button take full width
+          className="!pl-0"
         >
           <div className="flex items-center justify-end w-full">
-            {" "}
-            {/* Right-align content */}
             Amount
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </div>
@@ -275,7 +277,7 @@ export const columns: ColumnDef<Invoice>[] = [
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("total"));
-      return <div className="text-right">{formatCurrency(amount)}</div>;
+      return <div className="font-medium">{formatCurrency(amount)}</div>;
     },
     filterFn: "inNumberRange", // Enable range filter
   },
@@ -288,11 +290,9 @@ export const columns: ColumnDef<Invoice>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="w-full" // Make button take full width
+          className="!pl-0"
         >
           <div className="flex items-center justify-center w-full">
-            {" "}
-            {/* Center content */}
             Status
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </div>
@@ -300,7 +300,7 @@ export const columns: ColumnDef<Invoice>[] = [
       );
     },
     cell: ({ row }) => (
-      <div className="flex justify-center">
+      <div>
         <StatusBadge status={row.getValue("status")} />
       </div>
     ),
