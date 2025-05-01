@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition } from "react";
+import { useEffect, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -163,7 +163,8 @@ export function InvoiceForm({
   const wasAIassisted = !!initialData;
   const isEditing = !!existingInvoice;
 
-  const defaultValues: Partial<InvoiceFormValues> = (() => {
+  // Memoize defaultValues to prevent unnecessary recalculations and effect triggers
+  const defaultValues: Partial<InvoiceFormValues> = useMemo(() => {
     if (isEditing && existingInvoice) {
       // Calculate subtotal from existing items to derive percentages
       const itemsForCalc = existingInvoice.items ?? [];
@@ -217,7 +218,8 @@ export function InvoiceForm({
         discount: 0,
       };
     }
-  })();
+    // Dependencies for useMemo: only recalculate if these change
+  }, [isEditing, existingInvoice, defaultInvoiceNumber]);
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -225,26 +227,34 @@ export function InvoiceForm({
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset({
-        ...defaultValues,
-        client_id: form.getValues("client_id"),
-        issue_date: new Date(),
-        invoice_number: initialData.invoiceNumber || defaultInvoiceNumber,
-        due_date: initialData.dueDate
-          ? new Date(initialData.dueDate + "T00:00:00")
-          : defaultValues.due_date,
-        notes: initialData.notes || defaultValues.notes,
-        items: initialData.lineItems.map((item) => ({
-          description: item.description,
-          quantity: item.qty,
-          price: item.unitPrice,
-        })),
-        tax: form.getValues("tax") || 0,
-        discount: form.getValues("discount") || 0,
-      });
+    if (!isEditing) {
+      if (initialData) {
+        form.reset({
+          ...defaultValues, // Start with base defaults (includes correct invoice_number)
+          client_id: form.getValues("client_id"), // Keep current client_id
+          issue_date: new Date(), // Always reset issue date to today for new invoices
+          due_date: initialData.dueDate
+            ? new Date(initialData.dueDate + "T00:00:00") // Parse AI date string
+            : defaultValues.due_date, // Fallback to default due date
+          notes: initialData.notes || defaultValues.notes || "",
+          items: initialData.lineItems.map((item) => ({
+            description: item.description,
+            quantity: item.qty,
+            price: item.unitPrice,
+          })),
+          tax: defaultValues.tax || 0,
+          discount: defaultValues.discount || 0,
+        });
+      } else {
+        // Reset form to base default values, but keep the selected client_id and clear notes
+        form.reset({
+          ...defaultValues,
+          client_id: form.getValues("client_id"), // Preserve selected client
+          notes: "", // Explicitly clear notes when AI suggestion is removed
+        });
+      }
     }
-  }, [initialData, form.reset, defaultInvoiceNumber, form]);
+  }, [initialData, isEditing, defaultInvoiceNumber, defaultValues, form]);
 
   useFieldArray({ control: form.control, name: "items" });
 
@@ -377,11 +387,7 @@ export function InvoiceForm({
                   <FormItem>
                     <FormLabel>Invoice Number</FormLabel>
                     <FormControl>
-                      {isLoadingAI ? (
-                        <Skeleton className="h-10 w-full" />
-                      ) : (
-                        <Input {...field} disabled={isPending} />
-                      )}
+                      <Input {...field} disabled={isPending} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

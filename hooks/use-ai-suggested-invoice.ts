@@ -5,8 +5,9 @@ import { z } from "zod";
 
 // Re-define the schema shape on the client to validate the response
 // Ideally, this would be shared from a common types package
+// NOTE: Removed invoiceNumber to match API schema
 const AISuggestedInvoiceSchema = z.object({
-  invoiceNumber: z.string(),
+  // invoiceNumber: z.string(), // Removed
   dueDate: z.string(),
   lineItems: z
     .array(
@@ -28,6 +29,7 @@ const AISuggestedInvoiceSchema = z.object({
     .optional(),
 });
 
+// NOTE: Updated type to reflect removed invoiceNumber
 type AISuggestedInvoice = z.infer<typeof AISuggestedInvoiceSchema>;
 
 interface UseAISuggestedInvoiceProps {

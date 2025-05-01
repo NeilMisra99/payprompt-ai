@@ -12,9 +12,6 @@ const google = createGoogleGenerativeAI({
 
 // Define the expected structure of the AI's response using Zod
 const AISuggestedInvoiceSchema = z.object({
-  invoiceNumber: z
-    .string()
-    .describe("Suggested invoice number (e.g., INV-1043)"),
   dueDate: z
     .string()
     .describe(
@@ -118,9 +115,13 @@ export async function POST(req: Request) {
     }
 
     // 3. Prompt Engineering & AI Integration
-    const systemPrompt = `You are an AI assistant helping a user create a new invoice for their client. Based on the client's past invoices provided below, generate a suggested draft for a new invoice in ${currency}. Focus on common line items and estimate a reasonable due date (around 14-30 days from today, ${
+    const systemPrompt = `You are an AI assistant helping a user draft a new invoice for their client.
+Based *only* on the client's past invoices provided below, suggest relevant line items and estimate a reasonable due date (around 14-30 days from today, ${
       new Date().toISOString().split("T")[0]
-    }). Provide the response strictly in the required JSON format.`;
+    }).
+The invoice number will be provided separately. Do NOT suggest an invoice number.
+Generate the response strictly in the required JSON format using the provided schema.
+Invoice currency is ${currency}.`;
 
     const context = {
       today: new Date().toISOString().split("T")[0],
