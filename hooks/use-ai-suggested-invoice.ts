@@ -81,6 +81,13 @@ export function useAISuggestedInvoice({
 
       const data = await response.json();
 
+      // Handle the case where the API skipped suggestion due to no history
+      if (data.suggestionSkipped) {
+        setSuggestedInvoice(null);
+        setError(null); // Ensure no error is shown for this specific case
+        return; // Exit before Zod validation
+      }
+
       // Validate the response against the Zod schema
       const validationResult = AISuggestedInvoiceSchema.safeParse(data);
 
