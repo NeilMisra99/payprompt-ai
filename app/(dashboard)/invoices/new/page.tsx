@@ -4,15 +4,14 @@ import { redirect } from "next/navigation";
 import { CreateInvoiceWrapper } from "../_components/CreateInvoiceWrapper"; // Import the wrapper
 import { cookies } from "next/headers";
 import type {
-  Client as InvoiceFormClientType,
+  Client as InvoiceFormClientType, // Reverted: Keep using imported type
   Profile as InvoiceFormProfileType,
-} from "../_components/invoice-form"; // Keep type imports if needed elsewhere or by wrapper
+} from "../_components/invoice-form";
 
 // Define types based on API response matching InvoiceForm expectations
 interface NewInvoiceData {
-  clients: InvoiceFormClientType[];
-  profile: InvoiceFormProfileType | null; // Use null for missing profile
-  nextInvoiceNumber: string;
+  clients: InvoiceFormClientType[]; // Reverted: Use imported client type
+  profile: InvoiceFormProfileType | null;
 }
 
 // Function to fetch data for the new invoice page
@@ -61,7 +60,7 @@ export default async function NewInvoicePage() {
     redirect("/login");
   }
 
-  const { clients, profile, nextInvoiceNumber } = invoiceData;
+  const { clients, profile } = invoiceData;
 
   return (
     <div className="space-y-6 mb-4">
@@ -75,11 +74,7 @@ export default async function NewInvoicePage() {
       </div>
 
       {/* Render the Client Component Wrapper */}
-      <CreateInvoiceWrapper
-        clients={clients}
-        profile={profile ?? undefined}
-        defaultInvoiceNumber={nextInvoiceNumber}
-      />
+      <CreateInvoiceWrapper clients={clients} profile={profile ?? undefined} />
     </div>
   );
 }

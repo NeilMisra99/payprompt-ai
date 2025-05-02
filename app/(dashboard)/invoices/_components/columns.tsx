@@ -11,6 +11,7 @@ import {
   Copy,
   Send,
   Loader2,
+  FileText,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,8 @@ function ActionsCell({ row }: { row: Row<Invoice> }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const invoice = row.original;
-  const editPath = getEditPath(invoice); // Get the correct path
+  const editPath = getEditPath(invoice);
+  const viewPath = `/invoices/${invoice.id}`;
 
   const handleDeleteClick = (event: Event) => {
     event.stopPropagation();
@@ -109,6 +111,15 @@ function ActionsCell({ row }: { row: Row<Invoice> }) {
               </Link>
             </DropdownMenuItem>
           )}
+          {/* Conditionally render View Invoice only for non-drafts */}
+          {invoice.status !== "draft" && (
+            <DropdownMenuItem asChild>
+              <Link href={viewPath} className="cursor-pointer" prefetch={true}>
+                <FileText className="mr-2 h-4 w-4" />
+                View Invoice
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link
               href={`/invoices/${invoice.id}/duplicate`}
@@ -119,6 +130,7 @@ function ActionsCell({ row }: { row: Row<Invoice> }) {
               Duplicate
             </Link>
           </DropdownMenuItem>
+          {/* Conditionally render Send only for drafts */}
           {invoice.status === "draft" && (
             <DropdownMenuItem
               onSelect={handleSendClick}

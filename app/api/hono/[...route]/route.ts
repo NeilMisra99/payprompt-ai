@@ -74,19 +74,18 @@ app.get("/clients", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  // Fetch clients for the authenticated user
-  const { data, error } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("name");
+  // Fetch client details along with their last invoice number using RPC
+  const { data: clients, error: clientError } = await supabase.rpc(
+    "get_clients_with_last_invoice",
+    { user_id_param: user.id }
+  );
 
-  if (error) {
-    console.error("Error fetching clients:", error);
+  if (clientError) {
+    console.error("Error fetching clients:", clientError);
     return c.json({ error: "Failed to fetch clients" }, 500);
   }
 
-  return c.json(data ?? []);
+  return c.json(clients ?? []);
 });
 
 // Endpoint to fetch user profile
@@ -139,10 +138,7 @@ app.get("/invoices", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
+  // Build the query (back to original)
   const { data, error } = await supabase
     .from("invoices")
     .select(
@@ -286,12 +282,11 @@ app.get("/invoices/new-data", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  // Fetch full client details
-  const { data: clients, error: clientError } = await supabase
-    .from("clients")
-    .select("*") // Select all client fields
-    .eq("user_id", user.id)
-    .order("name");
+  // Fetch client details along with their last invoice number using RPC
+  const { data: clients, error: clientError } = await supabase.rpc(
+    "get_clients_with_last_invoice",
+    { user_id_param: user.id }
+  );
 
   // Fetch profile fields needed by InvoiceForm - UPDATED FIELDS
   const { data: profile, error: profileError } = await supabase
@@ -313,38 +308,19 @@ app.get("/invoices/new-data", async (c) => {
     .eq("id", user.id)
     .single();
 
-  // Calculate next invoice number
-  const currentYear = new Date().getFullYear();
-  const { data: lastInvoice, error: invoiceNumError } = await supabase
-    .from("invoices")
-    .select("invoice_number")
-    .eq("user_id", user.id)
-    .ilike("invoice_number", `INV-${currentYear}-%`)
-    .order("invoice_number", { ascending: false })
-    .limit(1);
-
-  if (clientError || profileError || invoiceNumError) {
+  // Check for errors in fetching clients and profile
+  if (clientError || profileError) {
     console.error("Error fetching new invoice data:", {
       clientError,
       profileError,
-      invoiceNumError,
     });
     return c.json({ error: "Failed to fetch necessary data" }, 500);
   }
 
-  let nextInvoiceNumber = `INV-${currentYear}-001`;
-  if (lastInvoice && lastInvoice.length > 0) {
-    const lastNumber = parseInt(lastInvoice[0].invoice_number.split("-")[2]);
-    const nextNumber = lastNumber + 1;
-    nextInvoiceNumber = `INV-${currentYear}-${nextNumber
-      .toString()
-      .padStart(3, "0")}`;
-  }
-
+  // Return only clients and profile
   return c.json({
     clients: clients ?? [],
     profile: profile ?? {},
-    nextInvoiceNumber,
   });
 });
 

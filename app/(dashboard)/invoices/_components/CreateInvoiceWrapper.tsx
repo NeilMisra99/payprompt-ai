@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter
 import { InvoiceForm } from "./invoice-form";
 import { useAISuggestedInvoice } from "@/hooks/use-ai-suggested-invoice";
@@ -16,15 +16,28 @@ import { Button } from "@/components/ui/button"; // Added Button
 interface CreateInvoiceWrapperProps {
   clients: Client[];
   profile?: Profile;
-  defaultInvoiceNumber?: string; // Now optional
-  existingInvoice?: InvoiceWithItemsAndClient | null; // Add optional prop for editing
+  existingInvoice?: InvoiceWithItemsAndClient | null;
+}
+
+// Helper to increment the numeric part of an invoice number string
+function incrementInvoiceNumber(invoiceNumberStr: string): string | null {
+  const match = invoiceNumberStr.match(/^(.*?-?)(\d+)$/);
+  if (match && match[1] !== undefined && match[2]) {
+    const prefix = match[1];
+    const numberStr = match[2];
+    const nextNumber = parseInt(numberStr, 10) + 1;
+    const paddedNextNumber = nextNumber
+      .toString()
+      .padStart(numberStr.length, "0");
+    return `${prefix}${paddedNextNumber}`;
+  }
+  return null; // Return null if format is unexpected
 }
 
 export function CreateInvoiceWrapper({
   clients,
   profile,
-  defaultInvoiceNumber, // Still needed for the case when NOT editing
-  existingInvoice, // Destructure the new prop
+  existingInvoice,
 }: CreateInvoiceWrapperProps) {
   const router = useRouter(); // Initialize router
   const [selectedClientId, setSelectedClientId] = useState<string | null>(
@@ -40,6 +53,35 @@ export function CreateInvoiceWrapper({
     regenerateSuggestion, // Get regenerate function
   } = useAISuggestedInvoice({ clientId: selectedClientId });
 
+  // Calculate the next invoice number based on the selected client's history
+  const calculatedInvoiceNumber = useMemo(() => {
+    if (isEditing) {
+      const num = existingInvoice?.invoice_number ?? "";
+      return num;
+    }
+    if (!selectedClientId) {
+      return ""; // No client selected, maybe return placeholder or default?
+    }
+
+    const selectedClient = clients.find((c) => c.id === selectedClientId);
+    const lastClientInvoice = selectedClient?.last_invoice_number;
+
+    if (lastClientInvoice) {
+      const nextNum = incrementInvoiceNumber(lastClientInvoice);
+      if (nextNum) {
+        return nextNum; // Successfully incremented client's last number
+      }
+      console.warn(
+        `Could not increment invoice number format: ${lastClientInvoice}`
+      );
+    }
+
+    // Fallback: No client history or failed increment, use default format
+    const currentYear = new Date().getFullYear();
+    const defaultNum = `INV-${currentYear}-001`; // Default for new clients or on error
+    return defaultNum;
+  }, [selectedClientId, clients, isEditing, existingInvoice]);
+
   const handleClientChange = (clientId: string | null) => {
     setSelectedClientId(clientId);
   };
@@ -49,8 +91,7 @@ export function CreateInvoiceWrapper({
     if (selectedClientId && !isEditing) {
       fetchSuggestion();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClientId, isEditing]); // Add isEditing dependency
+  }, [selectedClientId, isEditing, fetchSuggestion]); // Added fetchSuggestion dependency
 
   // Updated success handler - simplified
   const handleInvoiceSubmitSuccess = () => {
@@ -92,13 +133,12 @@ export function CreateInvoiceWrapper({
       <InvoiceForm
         clients={clients}
         profile={profile}
-        defaultInvoiceNumber={defaultInvoiceNumber}
-        existingInvoice={existingInvoice} // Pass existing invoice data
+        defaultInvoiceNumber={calculatedInvoiceNumber}
+        existingInvoice={existingInvoice}
         onClientChange={handleClientChange}
-        // Pass AI data only if NOT editing
         initialData={isEditing ? null : suggestedInvoice}
         onInvoiceSubmitSuccess={handleInvoiceSubmitSuccess}
-        isLoading={isEditing ? false : isLoading} // Don't show AI loading state when editing
+        isLoading={isEditing ? false : isLoading}
       />
     </div>
   );

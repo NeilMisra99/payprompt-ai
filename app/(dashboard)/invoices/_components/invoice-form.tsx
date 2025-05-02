@@ -54,10 +54,11 @@ export interface Client {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  address?: string;
-  contact_person?: string;
+  phone?: string | null;
+  address?: string | null;
+  contact_person?: string | null;
   user_id: string;
+  last_invoice_number?: string | null;
 }
 
 export interface Profile {
@@ -100,7 +101,6 @@ export interface InvoiceWithItemsAndClient {
 // Define type for AI Suggestion data based on schema
 // Match field names from AISuggestedInvoiceSchema in the hook
 interface AISuggestedData {
-  invoiceNumber: string;
   dueDate: string; // Expecting string YYYY-MM-DD
   lineItems: Array<{ description: string; qty: number; unitPrice: number }>;
   notes?: string;
@@ -207,11 +207,12 @@ export function InvoiceForm({
         discount: discountPercent, // Use calculated percentage
       };
     } else {
-      // Original default values for new invoice
+      // Default values for a *new* invoice
+      // Use the invoice number calculated by the wrapper
       return {
-        invoice_number: defaultInvoiceNumber,
+        invoice_number: defaultInvoiceNumber, // This now comes from the wrapper's calculation
         issue_date: new Date(),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default 30 days
         payment_terms: "Net 30",
         items: [{ description: "", quantity: 1, price: 0 }],
         tax: 0,
