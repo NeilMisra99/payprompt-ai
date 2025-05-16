@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter
 import { InvoiceForm } from "./invoice-form";
 import { useAISuggestedInvoice } from "@/hooks/use-ai-suggested-invoice";
@@ -19,21 +19,6 @@ interface CreateInvoiceWrapperProps {
   existingInvoice?: InvoiceWithItemsAndClient | null;
 }
 
-// Helper to increment the numeric part of an invoice number string
-function incrementInvoiceNumber(invoiceNumberStr: string): string | null {
-  const match = invoiceNumberStr.match(/^(.*?-?)(\d+)$/);
-  if (match && match[1] !== undefined && match[2]) {
-    const prefix = match[1];
-    const numberStr = match[2];
-    const nextNumber = parseInt(numberStr, 10) + 1;
-    const paddedNextNumber = nextNumber
-      .toString()
-      .padStart(numberStr.length, "0");
-    return `${prefix}${paddedNextNumber}`;
-  }
-  return null; // Return null if format is unexpected
-}
-
 export function CreateInvoiceWrapper({
   clients,
   profile,
@@ -45,58 +30,112 @@ export function CreateInvoiceWrapper({
   );
   const isEditing = !!existingInvoice; // Determine if we are in edit mode
 
+  // State for the calculated/fetched invoice number
+  const [calculatedInvoiceNumber, setCalculatedInvoiceNumber] =
+    useState<string>(
+      existingInvoice?.invoice_number ?? "" // Initial value for editing or empty
+    );
+  const [isFetchingNumber, setIsFetchingNumber] = useState<boolean>(false);
+  const [fetchNumberError, setFetchNumberError] = useState<string | null>(null);
+
   const {
     suggestedInvoice,
-    isLoading,
-    error,
+    isLoading: isLoadingAISuggestion, // Rename to avoid conflict
+    error: suggestionError, // Rename to avoid conflict
     fetchSuggestion,
     regenerateSuggestion, // Get regenerate function
   } = useAISuggestedInvoice({ clientId: selectedClientId });
 
-  // Calculate the next invoice number based on the selected client's history
-  const calculatedInvoiceNumber = useMemo(() => {
-    if (isEditing) {
-      const num = existingInvoice?.invoice_number ?? "";
-      return num;
+  // Function to fetch the next invoice number for a given prefix
+  const fetchNextNumber = useCallback(async (prefix: string) => {
+    setIsFetchingNumber(true);
+    setFetchNumberError(null);
+    try {
+      const response = await fetch(
+        `/api/hono/invoices/next-number?prefix=${encodeURIComponent(prefix)}`
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
+      const data = await response.json();
+      if (!data.nextInvoiceNumber) {
+        throw new Error("API did not return next invoice number");
+      }
+      setCalculatedInvoiceNumber(data.nextInvoiceNumber);
+    } catch (err) {
+      console.error("Failed to fetch next invoice number:", err);
+      setFetchNumberError(err instanceof Error ? err.message : "Unknown error");
+      // Optionally set a default/error state for calculatedInvoiceNumber?
+      setCalculatedInvoiceNumber(""); // Reset on error?
+    } finally {
+      setIsFetchingNumber(false);
     }
-    if (!selectedClientId) {
-      return ""; // No client selected, maybe return placeholder or default?
+  }, []); // Empty dependency array as it doesn't depend on component state directly
+
+  // Effect to fetch the next invoice number when client changes
+  useEffect(() => {
+    if (isEditing || !selectedClientId) {
+      // Don't fetch if editing or no client selected
+      // Reset number if client is deselected? Depends on desired UX.
+      if (!selectedClientId && !isEditing) setCalculatedInvoiceNumber("");
+      return;
     }
 
     const selectedClient = clients.find((c) => c.id === selectedClientId);
     const lastClientInvoice = selectedClient?.last_invoice_number;
 
+    let prefixToUse: string | null = null;
+    const currentYear = new Date().getFullYear();
+
     if (lastClientInvoice) {
-      const nextNum = incrementInvoiceNumber(lastClientInvoice);
-      if (nextNum) {
-        return nextNum; // Successfully incremented client's last number
+      const match = lastClientInvoice.match(/^(.*?-?)(\d+)$/);
+      if (match && match[1] !== undefined) {
+        let basePrefix = match[1];
+        // Ensure prefix includes year for matching
+        if (!basePrefix.includes(currentYear.toString())) {
+          const yearMatch = basePrefix.match(/(\d{4})-$/);
+          const yearToUse = yearMatch ? yearMatch[1] : currentYear.toString();
+          const prefixBaseOnly = basePrefix.replace(/\d{4}-?$/, "");
+          basePrefix = `${prefixBaseOnly}${yearToUse}-`;
+        }
+        prefixToUse = basePrefix;
+      } else {
+        console.warn(
+          "Could not parse prefix from lastClientInvoice, using default."
+        );
+        prefixToUse = `INV-${currentYear}-`;
       }
-      console.warn(
-        `Could not increment invoice number format: ${lastClientInvoice}`
-      );
+    } else {
+      // Default for clients with no history
+      prefixToUse = `INV-${currentYear}-`;
     }
 
-    // Fallback: No client history or failed increment, use default format
-    const currentYear = new Date().getFullYear();
-    const defaultNum = `INV-${currentYear}-001`; // Default for new clients or on error
-    return defaultNum;
-  }, [selectedClientId, clients, isEditing, existingInvoice]);
+    if (prefixToUse) {
+      fetchNextNumber(prefixToUse);
+    }
+  }, [selectedClientId, clients, isEditing, fetchNextNumber]); // Depend on client, edit state, and fetch function
 
   const handleClientChange = (clientId: string | null) => {
     setSelectedClientId(clientId);
+    setCalculatedInvoiceNumber(""); // Clear previous number immediately
+    setIsFetchingNumber(true); // Show loading state for number
   };
 
-  // Fetch suggestion when client changes, ONLY IF NOT EDITING
+  // Effect to fetch AI suggestion (kept separate)
   useEffect(() => {
     if (selectedClientId && !isEditing) {
       fetchSuggestion();
     }
-  }, [selectedClientId, isEditing, fetchSuggestion]); // Added fetchSuggestion dependency
+  }, [selectedClientId, isEditing, fetchSuggestion]);
 
   // Updated success handler - simplified
   const handleInvoiceSubmitSuccess = () => {
     router.push("/invoices");
   };
+
+  // Combine loading states for the form
+  const isFormLoading = isLoadingAISuggestion || isFetchingNumber;
 
   return (
     <div className="space-y-4">
@@ -109,9 +148,9 @@ export function CreateInvoiceWrapper({
             variant="outline"
             size="sm"
             onClick={regenerateSuggestion}
-            disabled={isLoading}
+            disabled={isLoadingAISuggestion}
           >
-            {isLoading ? (
+            {isLoadingAISuggestion ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <RefreshCcw className="mr-2 h-4 w-4" />
@@ -121,11 +160,19 @@ export function CreateInvoiceWrapper({
         </div>
       )}
       {/* Conditionally render error only when creating new */}
-      {!isEditing && error && !isLoading && (
+      {!isEditing && suggestionError && !isLoadingAISuggestion && (
         <Alert variant="destructive" className="mb-4">
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Fetching Suggestion</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{suggestionError}</AlertDescription>
+        </Alert>
+      )}
+      {/* Show number fetching errors */}
+      {!isEditing && fetchNumberError && !isFetchingNumber && (
+        <Alert variant="destructive" className="mb-4">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Error Fetching Invoice Number</AlertTitle>
+          <AlertDescription>{fetchNumberError}</AlertDescription>
         </Alert>
       )}
       {/* Render the form, passing down props and suggestion data */}
@@ -138,7 +185,7 @@ export function CreateInvoiceWrapper({
         onClientChange={handleClientChange}
         initialData={isEditing ? null : suggestedInvoice}
         onInvoiceSubmitSuccess={handleInvoiceSubmitSuccess}
-        isLoading={isEditing ? false : isLoading}
+        isLoading={isFormLoading}
       />
     </div>
   );

@@ -10,7 +10,7 @@ import type {
 
 // Define types based on API response matching InvoiceForm expectations
 interface NewInvoiceData {
-  clients: InvoiceFormClientType[]; // Reverted: Use imported client type
+  clients: InvoiceFormClientType[];
   profile: InvoiceFormProfileType | null;
 }
 

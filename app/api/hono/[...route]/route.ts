@@ -282,33 +282,22 @@ app.get("/invoices/new-data", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  // Fetch client details along with their last invoice number using RPC
-  const { data: clients, error: clientError } = await supabase.rpc(
-    "get_clients_with_last_invoice",
-    { user_id_param: user.id }
-  );
+  // Fetch only clients (with last invoice) and profile
+  const [clientsResult, profileResult] = await Promise.all([
+    supabase.rpc("get_clients_with_last_invoice", { user_id_param: user.id }),
+    supabase
+      .from("profiles")
+      .select(
+        `id, company_name, full_name, company_logo_url, company_address_street, company_address_line2, company_address_city, company_address_state, company_address_postal_code, company_address_country`
+      )
+      .eq("id", user.id)
+      .single(),
+  ]);
 
-  // Fetch profile fields needed by InvoiceForm - UPDATED FIELDS
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select(
-      `
-      id,
-      company_name,
-      full_name,
-      company_logo_url, 
-      company_address_street,
-      company_address_line2,
-      company_address_city,
-      company_address_state,
-      company_address_postal_code,
-      company_address_country
-    `
-    )
-    .eq("id", user.id)
-    .single();
+  const { data: clients, error: clientError } = clientsResult;
+  const { data: profile, error: profileError } = profileResult;
 
-  // Check for errors in fetching clients and profile
+  // Check for errors
   if (clientError || profileError) {
     console.error("Error fetching new invoice data:", {
       clientError,
@@ -317,7 +306,7 @@ app.get("/invoices/new-data", async (c) => {
     return c.json({ error: "Failed to fetch necessary data" }, 500);
   }
 
-  // Return only clients and profile
+  // Return clients and profile only
   return c.json({
     clients: clients ?? [],
     profile: profile ?? {},
@@ -488,6 +477,56 @@ app.get("/invoices/:id/edit-data", async (c) => {
     clients: clients ?? [],
     profile: profile ?? {},
   });
+});
+
+// Endpoint to get the next invoice number for a specific prefix
+app.get("/invoices/next-number", async (c) => {
+  const supabase = getSupabase(c);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const prefix = c.req.query("prefix");
+  if (!prefix || typeof prefix !== "string" || prefix.trim() === "") {
+    return c.json(
+      { error: "Missing or invalid 'prefix' query parameter" },
+      400
+    );
+  }
+
+  try {
+    const { data: nextNumber, error: rpcError } = await supabase.rpc(
+      "get_next_invoice_number_for_prefix",
+      { user_id_param: user.id, prefix_param: prefix }
+    );
+
+    if (rpcError) {
+      console.error(
+        "Error calling get_next_invoice_number_for_prefix RPC:",
+        rpcError
+      );
+      throw new Error("Failed to calculate next invoice number.");
+    }
+
+    if (!nextNumber) {
+      console.error(
+        "RPC get_next_invoice_number_for_prefix returned null/undefined"
+      );
+      throw new Error("Failed to determine next invoice number.");
+    }
+
+    return c.json({ nextInvoiceNumber: nextNumber });
+  } catch (error) {
+    console.error("Error in /invoices/next-number endpoint:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal server error.";
+    return c.json({ error: message }, 500);
+  }
 });
 
 app.get("/hello", (c) => {
