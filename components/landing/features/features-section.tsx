@@ -114,7 +114,7 @@ export function FeaturesSection() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6 }}
-      className="relative w-full py-16 md:py-32 bg-background overflow-hidden"
+      className="relative w-full py-16 md:py-32 bg-background overflow-hidden flex flex-col items-center"
       id="features"
     >
       <GridPattern

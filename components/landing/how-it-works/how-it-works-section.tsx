@@ -56,7 +56,7 @@ export function HowItWorksSection() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, amount: 0.1 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="relative w-full py-16 md:py-32 bg-muted/30 overflow-hidden"
+      className="relative w-full py-16 md:py-32 bg-muted/30 overflow-hidden flex flex-col items-center"
       id="how-it-works"
     >
       <GridPattern

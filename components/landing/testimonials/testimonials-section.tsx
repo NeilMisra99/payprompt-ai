@@ -49,7 +49,7 @@ export function TestimonialsSection() {
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6 }}
       id="testimonials"
-      className="relative w-full overflow-hidden py-16 md:py-32 antialiased bg-transparent"
+      className="relative w-full overflow-hidden py-16 md:py-32 antialiased bg-transparent flex flex-col items-center"
     >
       <div className="container px-6 sm:px-8 md:px-10 lg:px-16 relative z-10">
         <motion.div

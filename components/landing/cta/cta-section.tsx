@@ -12,7 +12,7 @@ export function CtaSection() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.5, delay: 0.1 }}
-      className="group relative w-full py-20 md:py-32 overflow-hidden bg-transparent"
+      className="group relative w-full py-20 md:py-32 overflow-hidden bg-transparent flex flex-col items-center"
       id="cta"
     >
       <div className="relative z-10 mx-auto flex max-w-container flex-col items-center gap-6 text-center sm:gap-8 px-6">
